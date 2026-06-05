@@ -1,0 +1,3 @@
+## 2024-06-05 - Sequential API Calls in GitHub Actions
+**Learning:** This AI-based GitHub action makes multiple external network requests sequentially (fetching PR details, getting PR diff, asking an LLM for reviews file-by-file, and posting comments/summaries). Given the high latency of LLM calls (often multi-second), a sequential file-by-file approach is a massive performance bottleneck, increasing the GitHub action runner time significantly.
+**Action:** Always look for opportunities to group independent asynchronous operations using `Promise.all` in TypeScript applications that coordinate multiple external API or LLM endpoints.
