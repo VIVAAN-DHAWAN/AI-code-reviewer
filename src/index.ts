@@ -46,20 +46,28 @@ async function run() {
     const comments: { path: string; body: string; line: number }[] = [];
     let summaryBody = '## 🤖 AI Code Review Summary\n\n';
 
-    for (const file of files) {
-      if (!file.diff.trim()) continue;
+    // ⚡ Bolt: Run AI reviews concurrently to significantly reduce total action execution time.
+    // Instead of waiting sequentially (O(N * T)), this runs them all in parallel (~O(T)).
+    const validFiles = files.filter(f => f.diff.trim());
 
-      const review = await getReview({
-        aiProvider,
-        openaiApiKey,
-        anthropicApiKey,
-        openrouterApiKey,
-        baseUrl,
-        ollamaHost,
-        model,
-        diff: file.diff,
-        reviewLevel
-      });
+    const reviews = await Promise.all(
+      validFiles.map(async file => {
+        const review = await getReview({
+          aiProvider,
+          openaiApiKey,
+          anthropicApiKey,
+          openrouterApiKey,
+          baseUrl,
+          ollamaHost,
+          model,
+          diff: file.diff,
+          reviewLevel
+        });
+        return { file, review };
+      })
+    );
+
+    for (const { file, review } of reviews) {
       if (!review) continue;
 
       summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
@@ -78,8 +86,11 @@ async function run() {
       }
     }
 
-    await postReviewComments(token, prNumber, prDetails.head.sha, comments);
-    await postSummary(token, prNumber, summaryBody);
+    // ⚡ Bolt: Parallelize GitHub API calls for creating review comments and posting the summary.
+    await Promise.all([
+      postReviewComments(token, prNumber, prDetails.head.sha, comments),
+      postSummary(token, prNumber, summaryBody)
+    ]);
 
   } catch (error: any) {
     core.setFailed(`Action failed: ${error.message}`);
