@@ -35949,9 +35949,11 @@ async function run() {
         const files = (0, diff_parser_1.parseDiff)(diff).slice(0, maxFiles);
         const comments = [];
         let summaryBody = '## 🤖 AI Code Review Summary\n\n';
-        for (const file of files) {
+        // ⚡ Bolt Optimization: Fetch reviews concurrently rather than sequentially
+        // to significantly reduce total Action execution time
+        const reviewPromises = files.map(async (file) => {
             if (!file.diff.trim())
-                continue;
+                return null;
             const review = await (0, ai_1.getReview)({
                 aiProvider,
                 openaiApiKey,
@@ -35963,8 +35965,13 @@ async function run() {
                 diff: file.diff,
                 reviewLevel
             });
-            if (!review)
+            return { file, review };
+        });
+        const results = await Promise.all(reviewPromises);
+        for (const result of results) {
+            if (!result || !result.review)
                 continue;
+            const { file, review } = result;
             summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
             if (review.issues && review.issues.length > 0) {
                 summaryBody += '| Line | Severity | Issue | Suggestion |\n|---|---|---|---|\n';
