@@ -39,15 +39,17 @@ async function run() {
       return;
     }
 
-    const prDetails = await getPRDetails(token);
-    const diff = await getPRDiff(token, prNumber);
+    const [prDetails, diff] = await Promise.all([
+      getPRDetails(token),
+      getPRDiff(token, prNumber)
+    ]);
     const files = parseDiff(diff).slice(0, maxFiles);
 
     const comments: { path: string; body: string; line: number }[] = [];
     let summaryBody = '## 🤖 AI Code Review Summary\n\n';
 
-    for (const file of files) {
-      if (!file.diff.trim()) continue;
+    const reviewPromises = files.map(async (file) => {
+      if (!file.diff.trim()) return { file, review: null };
 
       const review = await getReview({
         aiProvider,
@@ -60,6 +62,12 @@ async function run() {
         diff: file.diff,
         reviewLevel
       });
+      return { file, review };
+    });
+
+    const results = await Promise.all(reviewPromises);
+
+    for (const { file, review } of results) {
       if (!review) continue;
 
       summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
