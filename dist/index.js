@@ -35944,14 +35944,17 @@ async function run() {
             core.info('PR title contains [skip-review], skipping.');
             return;
         }
-        const prDetails = await (0, github_1.getPRDetails)(token);
-        const diff = await (0, github_1.getPRDiff)(token, prNumber);
+        const [prDetails, diff] = await Promise.all([
+            (0, github_1.getPRDetails)(token),
+            (0, github_1.getPRDiff)(token, prNumber)
+        ]);
         const files = (0, diff_parser_1.parseDiff)(diff).slice(0, maxFiles);
         const comments = [];
         let summaryBody = '## 🤖 AI Code Review Summary\n\n';
-        for (const file of files) {
+        // ⚡ Bolt Optimization: Run AI reviews concurrently instead of sequentially
+        const reviews = await Promise.all(files.map(async (file) => {
             if (!file.diff.trim())
-                continue;
+                return { file, review: null };
             const review = await (0, ai_1.getReview)({
                 aiProvider,
                 openaiApiKey,
@@ -35963,6 +35966,9 @@ async function run() {
                 diff: file.diff,
                 reviewLevel
             });
+            return { file, review };
+        }));
+        for (const { file, review } of reviews) {
             if (!review)
                 continue;
             summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
