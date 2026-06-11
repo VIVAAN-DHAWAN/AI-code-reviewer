@@ -46,8 +46,10 @@ async function run() {
     const comments: { path: string; body: string; line: number }[] = [];
     let summaryBody = '## 🤖 AI Code Review Summary\n\n';
 
-    for (const file of files) {
-      if (!file.diff.trim()) continue;
+    // ⚡ Bolt: Execute AI reviews concurrently using Promise.all
+    // Optimization: Reduces network wait time from O(N) to O(1) by parallelizing API calls
+    const reviewPromises = files.map(async (file) => {
+      if (!file.diff.trim()) return null;
 
       const review = await getReview({
         aiProvider,
@@ -60,7 +62,16 @@ async function run() {
         diff: file.diff,
         reviewLevel
       });
-      if (!review) continue;
+
+      return { file, review };
+    });
+
+    const results = await Promise.all(reviewPromises);
+
+    for (const result of results) {
+      if (!result || !result.review) continue;
+
+      const { file, review } = result;
 
       summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
 
