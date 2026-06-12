@@ -39,15 +39,22 @@ async function run() {
       return;
     }
 
-    const prDetails = await getPRDetails(token);
-    const diff = await getPRDiff(token, prNumber);
+    // ⚡ Bolt Performance Optimization:
+    // Fetch PR details and diff concurrently to reduce setup time.
+    const [prDetails, diff] = await Promise.all([
+      getPRDetails(token),
+      getPRDiff(token, prNumber)
+    ]);
     const files = parseDiff(diff).slice(0, maxFiles);
 
     const comments: { path: string; body: string; line: number }[] = [];
     let summaryBody = '## 🤖 AI Code Review Summary\n\n';
 
-    for (const file of files) {
-      if (!file.diff.trim()) continue;
+    // ⚡ Bolt Performance Optimization:
+    // Process reviews concurrently for all files instead of sequentially.
+    // This parallelizes network requests to the AI provider, significantly reducing execution time.
+    const reviewPromises = files.map(async (file) => {
+      if (!file.diff.trim()) return null;
 
       const review = await getReview({
         aiProvider,
@@ -60,7 +67,16 @@ async function run() {
         diff: file.diff,
         reviewLevel
       });
-      if (!review) continue;
+
+      if (!review) return null;
+      return { file, review };
+    });
+
+    const reviewResults = await Promise.all(reviewPromises);
+
+    for (const result of reviewResults) {
+      if (!result) continue;
+      const { file, review } = result;
 
       summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
 

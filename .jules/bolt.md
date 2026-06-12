@@ -1,0 +1,3 @@
+## 2024-05-24 - Sequential API Calls in GitHub Actions
+**Learning:** Sequential network calls to an AI provider in a `for...of` loop inside a GitHub Action can cause the execution time to scale linearly with the number of files analyzed. This can lead to significantly longer review times or timeouts on larger PRs.
+**Action:** Always batch or parallelize network requests using `Promise.all()` when analyzing multiple files independently to improve throughput and execution time.
