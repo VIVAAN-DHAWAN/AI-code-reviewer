@@ -46,20 +46,28 @@ async function run() {
     const comments: { path: string; body: string; line: number }[] = [];
     let summaryBody = '## 🤖 AI Code Review Summary\n\n';
 
-    for (const file of files) {
-      if (!file.diff.trim()) continue;
+    // ⚡ Bolt: Fetch reviews for all files concurrently to reduce I/O waiting time.
+    const fileReviews = await Promise.all(
+      files.map(async (file) => {
+        if (!file.diff.trim()) return { file, review: null };
 
-      const review = await getReview({
-        aiProvider,
-        openaiApiKey,
-        anthropicApiKey,
-        openrouterApiKey,
-        baseUrl,
-        ollamaHost,
-        model,
-        diff: file.diff,
-        reviewLevel
-      });
+        const review = await getReview({
+          aiProvider,
+          openaiApiKey,
+          anthropicApiKey,
+          openrouterApiKey,
+          baseUrl,
+          ollamaHost,
+          model,
+          diff: file.diff,
+          reviewLevel
+        });
+
+        return { file, review };
+      })
+    );
+
+    for (const { file, review } of fileReviews) {
       if (!review) continue;
 
       summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
