@@ -1,0 +1,1 @@
+## 2026-06-15 - Parallelizing LLM API Requests Safely\n**Learning:** When optimizing sequential external LLM API calls with `Promise.all`, using unbounded concurrency will likely lead to HTTP 429 Too Many Requests errors due to provider rate limits.\n**Action:** Always implement batching or a concurrency queue when making parallel requests to AI providers.

@@ -46,20 +46,34 @@ async function run() {
     const comments: { path: string; body: string; line: number }[] = [];
     let summaryBody = '## 🤖 AI Code Review Summary\n\n';
 
-    for (const file of files) {
-      if (!file.diff.trim()) continue;
+    // ⚡ Bolt: Fetch AI reviews concurrently with a batch limit to reduce total waiting time while avoiding API rate limits
+    const BATCH_SIZE = 3;
+    const reviews: { file: any; review: any }[] = [];
 
-      const review = await getReview({
-        aiProvider,
-        openaiApiKey,
-        anthropicApiKey,
-        openrouterApiKey,
-        baseUrl,
-        ollamaHost,
-        model,
-        diff: file.diff,
-        reviewLevel
-      });
+    for (let i = 0; i < files.length; i += BATCH_SIZE) {
+      const batchFiles = files.slice(i, i + BATCH_SIZE);
+      const batchReviews = await Promise.all(
+        batchFiles.map(async (file) => {
+          if (!file.diff.trim()) return { file, review: null };
+
+          const review = await getReview({
+            aiProvider,
+            openaiApiKey,
+            anthropicApiKey,
+            openrouterApiKey,
+            baseUrl,
+            ollamaHost,
+            model,
+            diff: file.diff,
+            reviewLevel
+          });
+          return { file, review };
+        })
+      );
+      reviews.push(...batchReviews);
+    }
+
+    for (const { file, review } of reviews) {
       if (!review) continue;
 
       summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
