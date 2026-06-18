@@ -46,45 +46,35 @@ async function run() {
     const comments: { path: string; body: string; line: number }[] = [];
     let summaryBody = '## 🤖 AI Code Review Summary\n\n';
 
-    // ⚡ Bolt: Process files in batches to reduce review time while respecting API rate limits (avoiding HTTP 429).
-    const batchSize = 3;
-    const validFiles = files.filter(file => file.diff.trim());
+    for (const file of files) {
+      if (!file.diff.trim()) continue;
 
-    for (let i = 0; i < validFiles.length; i += batchSize) {
-      const batch = validFiles.slice(i, i + batchSize);
+      const review = await getReview({
+        aiProvider,
+        openaiApiKey,
+        anthropicApiKey,
+        openrouterApiKey,
+        baseUrl,
+        ollamaHost,
+        model,
+        diff: file.diff,
+        reviewLevel
+      });
+      if (!review) continue;
 
-      const reviews = await Promise.all(batch.map(async file => {
-        const review = await getReview({
-          aiProvider,
-          openaiApiKey,
-          anthropicApiKey,
-          openrouterApiKey,
-          baseUrl,
-          ollamaHost,
-          model,
-          diff: file.diff,
-          reviewLevel
-        });
-        return { file, review };
-      }));
+      summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
 
-      for (const { file, review } of reviews) {
-        if (!review) continue;
-
-        summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
-
-        if (review.issues && review.issues.length > 0) {
-          summaryBody += '| Line | Severity | Issue | Suggestion |\n|---|---|---|---|\n';
-          for (const issue of review.issues) {
-            summaryBody += `| ${issue.line} | ${issue.severity} | ${issue.message} | ${issue.suggestion} |\n`;
-            comments.push({
-              path: file.filename,
-              body: `**${issue.severity.toUpperCase()}**: ${issue.message}\n\n*Suggestion*: ${issue.suggestion}`,
-              line: issue.line > 0 ? issue.line : 1
-            });
-          }
-          summaryBody += '\n';
+      if (review.issues && review.issues.length > 0) {
+        summaryBody += '| Line | Severity | Issue | Suggestion |\n|---|---|---|---|\n';
+        for (const issue of review.issues) {
+          summaryBody += `| ${issue.line} | ${issue.severity} | ${issue.message} | ${issue.suggestion} |\n`;
+          comments.push({
+            path: file.filename,
+            body: `**${issue.severity.toUpperCase()}**: ${issue.message}\n\n*Suggestion*: ${issue.suggestion}`,
+            line: issue.line > 0 ? issue.line : 1
+          });
         }
+        summaryBody += '\n';
       }
     }
 

@@ -35949,41 +35949,34 @@ async function run() {
         const files = (0, diff_parser_1.parseDiff)(diff).slice(0, maxFiles);
         const comments = [];
         let summaryBody = '## 🤖 AI Code Review Summary\n\n';
-        // ⚡ Bolt: Process files in batches to reduce review time while respecting API rate limits (avoiding HTTP 429).
-        const batchSize = 3;
-        const validFiles = files.filter(file => file.diff.trim());
-        for (let i = 0; i < validFiles.length; i += batchSize) {
-            const batch = validFiles.slice(i, i + batchSize);
-            const reviews = await Promise.all(batch.map(async (file) => {
-                const review = await (0, ai_1.getReview)({
-                    aiProvider,
-                    openaiApiKey,
-                    anthropicApiKey,
-                    openrouterApiKey,
-                    baseUrl,
-                    ollamaHost,
-                    model,
-                    diff: file.diff,
-                    reviewLevel
-                });
-                return { file, review };
-            }));
-            for (const { file, review } of reviews) {
-                if (!review)
-                    continue;
-                summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
-                if (review.issues && review.issues.length > 0) {
-                    summaryBody += '| Line | Severity | Issue | Suggestion |\n|---|---|---|---|\n';
-                    for (const issue of review.issues) {
-                        summaryBody += `| ${issue.line} | ${issue.severity} | ${issue.message} | ${issue.suggestion} |\n`;
-                        comments.push({
-                            path: file.filename,
-                            body: `**${issue.severity.toUpperCase()}**: ${issue.message}\n\n*Suggestion*: ${issue.suggestion}`,
-                            line: issue.line > 0 ? issue.line : 1
-                        });
-                    }
-                    summaryBody += '\n';
+        for (const file of files) {
+            if (!file.diff.trim())
+                continue;
+            const review = await (0, ai_1.getReview)({
+                aiProvider,
+                openaiApiKey,
+                anthropicApiKey,
+                openrouterApiKey,
+                baseUrl,
+                ollamaHost,
+                model,
+                diff: file.diff,
+                reviewLevel
+            });
+            if (!review)
+                continue;
+            summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
+            if (review.issues && review.issues.length > 0) {
+                summaryBody += '| Line | Severity | Issue | Suggestion |\n|---|---|---|---|\n';
+                for (const issue of review.issues) {
+                    summaryBody += `| ${issue.line} | ${issue.severity} | ${issue.message} | ${issue.suggestion} |\n`;
+                    comments.push({
+                        path: file.filename,
+                        body: `**${issue.severity.toUpperCase()}**: ${issue.message}\n\n*Suggestion*: ${issue.suggestion}`,
+                        line: issue.line > 0 ? issue.line : 1
+                    });
                 }
+                summaryBody += '\n';
             }
         }
         await (0, github_1.postReviewComments)(token, prNumber, prDetails.head.sha, comments);
