@@ -1,0 +1,3 @@
+## 2025-02-20 - Safely Parallelizing LLM API Requests
+**Learning:** When making multiple external LLM API requests for code review (e.g., iterating through multiple changed files), sending them sequentially is slow, but sending them all concurrently with `Promise.all()` can lead to HTTP 429 "Too Many Requests" rate limit errors from the AI providers (like OpenAI, Anthropic, or OpenRouter).
+**Action:** Use request batching or set a concurrency limit (e.g., process 3 files at a time) when parallelizing AI reviews. This significantly improves performance while maintaining stability and avoiding API blocks.
