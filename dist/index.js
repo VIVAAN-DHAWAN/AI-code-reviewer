@@ -35944,43 +35944,58 @@ async function run() {
             core.info('PR title contains [skip-review], skipping.');
             return;
         }
-        const prDetails = await (0, github_1.getPRDetails)(token);
-        const diff = await (0, github_1.getPRDiff)(token, prNumber);
+        // ⚡ Bolt: Fetch PR details and diff concurrently to reduce overall execution time
+        const [prDetails, diff] = await Promise.all([
+            (0, github_1.getPRDetails)(token),
+            (0, github_1.getPRDiff)(token, prNumber)
+        ]);
         const files = (0, diff_parser_1.parseDiff)(diff).slice(0, maxFiles);
         const comments = [];
         let summaryBody = '## 🤖 AI Code Review Summary\n\n';
-        for (const file of files) {
-            if (!file.diff.trim())
-                continue;
-            const review = await (0, ai_1.getReview)({
-                aiProvider,
-                openaiApiKey,
-                anthropicApiKey,
-                openrouterApiKey,
-                baseUrl,
-                ollamaHost,
-                model,
-                diff: file.diff,
-                reviewLevel
-            });
-            if (!review)
-                continue;
-            summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
-            if (review.issues && review.issues.length > 0) {
-                summaryBody += '| Line | Severity | Issue | Suggestion |\n|---|---|---|---|\n';
-                for (const issue of review.issues) {
-                    summaryBody += `| ${issue.line} | ${issue.severity} | ${issue.message} | ${issue.suggestion} |\n`;
-                    comments.push({
-                        path: file.filename,
-                        body: `**${issue.severity.toUpperCase()}**: ${issue.message}\n\n*Suggestion*: ${issue.suggestion}`,
-                        line: issue.line > 0 ? issue.line : 1
-                    });
+        // ⚡ Bolt: Process files in batches to speed up reviews while avoiding API rate limits
+        const BATCH_SIZE = 3;
+        for (let i = 0; i < files.length; i += BATCH_SIZE) {
+            const batch = files.slice(i, i + BATCH_SIZE);
+            const batchResults = await Promise.all(batch.map(async (file) => {
+                if (!file.diff.trim())
+                    return null;
+                const review = await (0, ai_1.getReview)({
+                    aiProvider,
+                    openaiApiKey,
+                    anthropicApiKey,
+                    openrouterApiKey,
+                    baseUrl,
+                    ollamaHost,
+                    model,
+                    diff: file.diff,
+                    reviewLevel
+                });
+                return { file, review };
+            }));
+            for (const result of batchResults) {
+                if (!result || !result.review)
+                    continue;
+                const { file, review } = result;
+                summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
+                if (review.issues && review.issues.length > 0) {
+                    summaryBody += '| Line | Severity | Issue | Suggestion |\n|---|---|---|---|\n';
+                    for (const issue of review.issues) {
+                        summaryBody += `| ${issue.line} | ${issue.severity} | ${issue.message} | ${issue.suggestion} |\n`;
+                        comments.push({
+                            path: file.filename,
+                            body: `**${issue.severity.toUpperCase()}**: ${issue.message}\n\n*Suggestion*: ${issue.suggestion}`,
+                            line: issue.line > 0 ? issue.line : 1
+                        });
+                    }
+                    summaryBody += '\n';
                 }
-                summaryBody += '\n';
             }
         }
-        await (0, github_1.postReviewComments)(token, prNumber, prDetails.head.sha, comments);
-        await (0, github_1.postSummary)(token, prNumber, summaryBody);
+        // ⚡ Bolt: Post comments and summary concurrently
+        await Promise.all([
+            (0, github_1.postReviewComments)(token, prNumber, prDetails.head.sha, comments),
+            (0, github_1.postSummary)(token, prNumber, summaryBody)
+        ]);
     }
     catch (error) {
         core.setFailed(`Action failed: ${error.message}`);

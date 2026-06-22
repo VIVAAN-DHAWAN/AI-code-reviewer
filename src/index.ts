@@ -39,47 +39,66 @@ async function run() {
       return;
     }
 
-    const prDetails = await getPRDetails(token);
-    const diff = await getPRDiff(token, prNumber);
+    // ⚡ Bolt: Fetch PR details and diff concurrently to reduce overall execution time
+    const [prDetails, diff] = await Promise.all([
+      getPRDetails(token),
+      getPRDiff(token, prNumber)
+    ]);
     const files = parseDiff(diff).slice(0, maxFiles);
 
     const comments: { path: string; body: string; line: number }[] = [];
     let summaryBody = '## 🤖 AI Code Review Summary\n\n';
 
-    for (const file of files) {
-      if (!file.diff.trim()) continue;
+    // ⚡ Bolt: Process files in batches to speed up reviews while avoiding API rate limits
+    const BATCH_SIZE = 3;
+    for (let i = 0; i < files.length; i += BATCH_SIZE) {
+      const batch = files.slice(i, i + BATCH_SIZE);
 
-      const review = await getReview({
-        aiProvider,
-        openaiApiKey,
-        anthropicApiKey,
-        openrouterApiKey,
-        baseUrl,
-        ollamaHost,
-        model,
-        diff: file.diff,
-        reviewLevel
-      });
-      if (!review) continue;
+      const batchResults = await Promise.all(
+        batch.map(async (file) => {
+          if (!file.diff.trim()) return null;
 
-      summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
-
-      if (review.issues && review.issues.length > 0) {
-        summaryBody += '| Line | Severity | Issue | Suggestion |\n|---|---|---|---|\n';
-        for (const issue of review.issues) {
-          summaryBody += `| ${issue.line} | ${issue.severity} | ${issue.message} | ${issue.suggestion} |\n`;
-          comments.push({
-            path: file.filename,
-            body: `**${issue.severity.toUpperCase()}**: ${issue.message}\n\n*Suggestion*: ${issue.suggestion}`,
-            line: issue.line > 0 ? issue.line : 1
+          const review = await getReview({
+            aiProvider,
+            openaiApiKey,
+            anthropicApiKey,
+            openrouterApiKey,
+            baseUrl,
+            ollamaHost,
+            model,
+            diff: file.diff,
+            reviewLevel
           });
+          return { file, review };
+        })
+      );
+
+      for (const result of batchResults) {
+        if (!result || !result.review) continue;
+        const { file, review } = result;
+
+        summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
+
+        if (review.issues && review.issues.length > 0) {
+          summaryBody += '| Line | Severity | Issue | Suggestion |\n|---|---|---|---|\n';
+          for (const issue of review.issues) {
+            summaryBody += `| ${issue.line} | ${issue.severity} | ${issue.message} | ${issue.suggestion} |\n`;
+            comments.push({
+              path: file.filename,
+              body: `**${issue.severity.toUpperCase()}**: ${issue.message}\n\n*Suggestion*: ${issue.suggestion}`,
+              line: issue.line > 0 ? issue.line : 1
+            });
+          }
+          summaryBody += '\n';
         }
-        summaryBody += '\n';
       }
     }
 
-    await postReviewComments(token, prNumber, prDetails.head.sha, comments);
-    await postSummary(token, prNumber, summaryBody);
+    // ⚡ Bolt: Post comments and summary concurrently
+    await Promise.all([
+      postReviewComments(token, prNumber, prDetails.head.sha, comments),
+      postSummary(token, prNumber, summaryBody)
+    ]);
 
   } catch (error: any) {
     core.setFailed(`Action failed: ${error.message}`);
