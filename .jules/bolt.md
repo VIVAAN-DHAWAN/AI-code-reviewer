@@ -1,0 +1,3 @@
+## 2024-06-24 - Batching AI API Requests
+**Learning:** Sequential await calls for external AI API requests over an array of items (like parsing files individually) creates an I/O performance bottleneck. However, using completely parallel execution with `Promise.all` over a large number of items can trigger HTTP 429 'Too Many Requests' rate limits on the LLM provider side.
+**Action:** When parallelizing external LLM API requests, chunk the items into smaller arrays and process each chunk concurrently. Using a batch size (e.g., 3) balances performance improvements by parallel processing while preventing API rate limiting.
