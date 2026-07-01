@@ -46,35 +46,47 @@ async function run() {
     const comments: { path: string; body: string; line: number }[] = [];
     let summaryBody = '## 🤖 AI Code Review Summary\n\n';
 
-    for (const file of files) {
-      if (!file.diff.trim()) continue;
+    // ⚡ Bolt: Process files in chunks of 3 to parallelize LLM requests and reduce overall wait time
+    // without hitting HTTP 429 rate limit errors from AI providers.
+    const BATCH_SIZE = 3;
+    const filesToProcess = files.filter(file => file.diff.trim());
 
-      const review = await getReview({
-        aiProvider,
-        openaiApiKey,
-        anthropicApiKey,
-        openrouterApiKey,
-        baseUrl,
-        ollamaHost,
-        model,
-        diff: file.diff,
-        reviewLevel
-      });
-      if (!review) continue;
-
-      summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
-
-      if (review.issues && review.issues.length > 0) {
-        summaryBody += '| Line | Severity | Issue | Suggestion |\n|---|---|---|---|\n';
-        for (const issue of review.issues) {
-          summaryBody += `| ${issue.line} | ${issue.severity} | ${issue.message} | ${issue.suggestion} |\n`;
-          comments.push({
-            path: file.filename,
-            body: `**${issue.severity.toUpperCase()}**: ${issue.message}\n\n*Suggestion*: ${issue.suggestion}`,
-            line: issue.line > 0 ? issue.line : 1
+    for (let i = 0; i < filesToProcess.length; i += BATCH_SIZE) {
+      const batch = filesToProcess.slice(i, i + BATCH_SIZE);
+      const reviews = await Promise.all(
+        batch.map(async (file) => {
+          const review = await getReview({
+            aiProvider,
+            openaiApiKey,
+            anthropicApiKey,
+            openrouterApiKey,
+            baseUrl,
+            ollamaHost,
+            model,
+            diff: file.diff,
+            reviewLevel
           });
+          return { file, review };
+        })
+      );
+
+      for (const { file, review } of reviews) {
+        if (!review) continue;
+
+        summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
+
+        if (review.issues && review.issues.length > 0) {
+          summaryBody += '| Line | Severity | Issue | Suggestion |\n|---|---|---|---|\n';
+          for (const issue of review.issues) {
+            summaryBody += `| ${issue.line} | ${issue.severity} | ${issue.message} | ${issue.suggestion} |\n`;
+            comments.push({
+              path: file.filename,
+              body: `**${issue.severity.toUpperCase()}**: ${issue.message}\n\n*Suggestion*: ${issue.suggestion}`,
+              line: issue.line > 0 ? issue.line : 1
+            });
+          }
+          summaryBody += '\n';
         }
-        summaryBody += '\n';
       }
     }
 
