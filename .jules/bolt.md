@@ -1,0 +1,3 @@
+## 2024-07-02 - Batched API Requests Optimization
+**Learning:** Sequential processing of files during code review leads to significant performance bottlenecks, but firing all AI requests at once using `Promise.all` triggers HTTP 429 'Too Many Requests' rate limits from AI providers like OpenAI/Anthropic.
+**Action:** When parallelizing external LLM API requests in this codebase, always use batching (e.g., `BATCH_SIZE = 3`) to maximize concurrency while staying within provider rate limits.
