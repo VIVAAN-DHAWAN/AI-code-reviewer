@@ -8,9 +8,11 @@
 </div>
 
 ## 💡 Why AI Code Reviewer?
+
 Stop context-switching between GitHub and ChatGPT. This Action automatically reviews every PR the moment it's opened — catching bugs, security issues, and bad practices **directly on the changed lines**, for your whole team, 24/7.
 
 ## 🚀 Features
+
 - **Auto-Review PRs:** Automatically reviews pull requests on `opened` and `synchronize`.
 - **Inline Comments:** Posts targeted inline comments directly on the changed lines.
 - **Summary Report:** Adds a comprehensive markdown table summary of all issues.
@@ -49,73 +51,79 @@ jobs:
 
 ## ⚙️ Configuration Options
 
-| Input | Description | Default | Required |
-| --- | --- | --- | --- |
-| `github_token` | `${{ secrets.GITHUB_TOKEN }}` | N/A | **Yes** |
-| `ai_provider` | `openai`, `ollama`, `openrouter`, or `anthropic` | `openai` | No |
-| `openai_api_key` | OpenAI API key | N/A | No |
-| `anthropic_api_key` | Anthropic API key | N/A | No |
-| `openrouter_api_key` | OpenRouter API key | N/A | No |
-| `base_url` | Custom API Base URL | N/A | No |
-| `ollama_host` | Custom Ollama host URL | `http://localhost:11434` | No |
-| `model` | AI Model to use | Varies by provider | No |
-| `review_level` | `light` or `full` | `full` | No |
-| `max_files` | Maximum files to review | `10` | No |
+| Input                | Description                                      | Default                  | Required |
+| -------------------- | ------------------------------------------------ | ------------------------ | -------- |
+| `github_token`       | `${{ secrets.GITHUB_TOKEN }}`                    | N/A                      | **Yes**  |
+| `ai_provider`        | `openai`, `ollama`, `openrouter`, or `anthropic` | `openai`                 | No       |
+| `openai_api_key`     | OpenAI API key                                   | N/A                      | No       |
+| `anthropic_api_key`  | Anthropic API key                                | N/A                      | No       |
+| `openrouter_api_key` | OpenRouter API key                               | N/A                      | No       |
+| `base_url`           | Custom API Base URL                              | N/A                      | No       |
+| `ollama_host`        | Custom Ollama host URL                           | `http://localhost:11434` | No       |
+| `model`              | AI Model to use                                  | Varies by provider       | No       |
+| `review_level`       | `light` or `full`                                | `full`                   | No       |
+| `max_files`          | Maximum files to review                          | `10`                     | No       |
 
 ## 🔌 Provider Examples
 
 ### OpenAI
+
 ```yaml
-      - uses: VIVAAN-DHAWAN/ai-code-reviewer@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          ai_provider: openai
-          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          model: gpt-4o
+- uses: VIVAAN-DHAWAN/ai-code-reviewer@v1
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    ai_provider: openai
+    openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+    model: gpt-4o
 ```
 
 ### Anthropic Claude
+
 ```yaml
-      - uses: VIVAAN-DHAWAN/ai-code-reviewer@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          ai_provider: anthropic
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          model: claude-sonnet-4-6
+- uses: VIVAAN-DHAWAN/ai-code-reviewer@v1
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    ai_provider: anthropic
+    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+    model: claude-sonnet-4-6
 ```
 
 ### OpenRouter (supports 200+ models)
+
 ```yaml
-      - uses: VIVAAN-DHAWAN/ai-code-reviewer@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          ai_provider: openrouter
-          openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}
-          model: google/gemini-2.5-flash
+- uses: VIVAAN-DHAWAN/ai-code-reviewer@v1
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    ai_provider: openrouter
+    openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}
+    model: google/gemini-2.5-flash
 ```
 
 ### Ollama (fully local, no API key)
+
 ```yaml
-      - uses: VIVAAN-DHAWAN/ai-code-reviewer@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          ai_provider: ollama
-          ollama_host: http://YOUR_MACHINE_IP:11434
-          model: llama3.2
+- uses: VIVAAN-DHAWAN/ai-code-reviewer@v1
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    ai_provider: ollama
+    ollama_host: http://YOUR_MACHINE_IP:11434
+    model: llama3.2
 ```
 
 ## 🧠 Recommended Models
 
-| Provider | Model | Cost | Best For |
-| --- | --- | --- | --- |
-| OpenAI | `gpt-4o` | ~$0.01/PR | Best overall quality |
-| Anthropic | `claude-sonnet-4-6` | ~$0.01/PR | Best code understanding |
-| OpenRouter | `google/gemini-2.5-flash` | ~$0.001/PR | Best value |
-| OpenRouter | `meta-llama/llama-3.3-70b` | Free tier | Free cloud option |
-| Ollama | `llama3.2` | Free | 100% local & private |
+| Provider   | Model                      | Cost       | Best For                |
+| ---------- | -------------------------- | ---------- | ----------------------- |
+| OpenAI     | `gpt-4o`                   | ~$0.01/PR  | Best overall quality    |
+| Anthropic  | `claude-sonnet-4-6`        | ~$0.01/PR  | Best code understanding |
+| OpenRouter | `google/gemini-2.5-flash`  | ~$0.001/PR | Best value              |
+| OpenRouter | `meta-llama/llama-3.3-70b` | Free tier  | Free cloud option       |
+| Ollama     | `llama3.2`                 | Free       | 100% local & private    |
 
 ## 🤝 Contributing
+
 Contributions, issues and feature requests are welcome! Feel free to open a PR or issue.
 
 ## 📄 License
+
 MIT © [VIVAAN-DHAWAN](https://github.com/VIVAAN-DHAWAN)
