@@ -1,17 +1,17 @@
-import * as github from '@actions/github';
+import * as github from "@actions/github";
 
 export async function getPRDetails(token: string) {
   const octokit = github.getOctokit(token);
   const context = github.context;
-  
+
   if (!context.payload.pull_request) {
-    throw new Error('Not running in a PR context');
+    throw new Error("Not running in a PR context");
   }
 
   const { data: pr } = await octokit.rest.pulls.get({
     owner: context.repo.owner,
     repo: context.repo.repo,
-    pull_number: context.payload.pull_request.number
+    pull_number: context.payload.pull_request.number,
   });
 
   return pr;
@@ -20,14 +20,14 @@ export async function getPRDetails(token: string) {
 export async function getPRDiff(token: string, pullNumber: number) {
   const octokit = github.getOctokit(token);
   const context = github.context;
-  
+
   const { data: diff } = await octokit.rest.pulls.get({
     owner: context.repo.owner,
     repo: context.repo.repo,
     pull_number: pullNumber,
     mediaType: {
-      format: 'diff'
-    }
+      format: "diff",
+    },
   });
 
   return diff as unknown as string;
@@ -37,7 +37,7 @@ export async function postReviewComments(
   token: string,
   pullNumber: number,
   commitId: string,
-  comments: { path: string; body: string; line: number }[]
+  comments: { path: string; body: string; line: number }[],
 ) {
   const octokit = github.getOctokit(token);
   const context = github.context;
@@ -49,12 +49,16 @@ export async function postReviewComments(
     repo: context.repo.repo,
     pull_number: pullNumber,
     commit_id: commitId,
-    event: 'COMMENT',
-    comments
+    event: "COMMENT",
+    comments,
   });
 }
 
-export async function postSummary(token: string, issueNumber: number, summary: string) {
+export async function postSummary(
+  token: string,
+  issueNumber: number,
+  summary: string,
+) {
   const octokit = github.getOctokit(token);
   const context = github.context;
 
@@ -62,6 +66,6 @@ export async function postSummary(token: string, issueNumber: number, summary: s
     owner: context.repo.owner,
     repo: context.repo.repo,
     issue_number: issueNumber,
-    body: summary
+    body: summary,
   });
 }
