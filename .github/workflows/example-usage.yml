@@ -5,7 +5,11 @@ on:
 
 jobs:
   review:
+    if: false
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
     steps:
       - uses: actions/checkout@v4
       - uses: your-username/ai-code-reviewer@v1
