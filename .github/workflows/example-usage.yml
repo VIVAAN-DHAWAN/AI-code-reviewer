@@ -5,6 +5,10 @@ on:
 
 jobs:
   review:
+    if: false
+    permissions:
+      pull-requests: write
+      issues: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
