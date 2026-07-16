@@ -35915,68 +35915,78 @@ const ai_1 = __nccwpck_require__(2382);
 const github_1 = __nccwpck_require__(9248);
 async function run() {
     try {
-        const token = core.getInput('github_token', { required: true });
-        const aiProvider = core.getInput('ai_provider') || 'openai';
-        const openaiApiKey = core.getInput('openai_api_key');
-        const anthropicApiKey = core.getInput('anthropic_api_key');
-        const openrouterApiKey = core.getInput('openrouter_api_key');
-        const baseUrl = core.getInput('base_url');
-        const ollamaHost = core.getInput('ollama_host') || 'http://localhost:11434';
-        let model = core.getInput('model');
+        const token = core.getInput("github_token", { required: true });
+        const aiProvider = core.getInput("ai_provider") || "openai";
+        const openaiApiKey = core.getInput("openai_api_key");
+        const anthropicApiKey = core.getInput("anthropic_api_key");
+        const openrouterApiKey = core.getInput("openrouter_api_key");
+        const baseUrl = core.getInput("base_url");
+        const ollamaHost = core.getInput("ollama_host") || "http://localhost:11434";
+        let model = core.getInput("model");
         if (!model) {
-            if (aiProvider === 'openai' || aiProvider === 'openrouter')
-                model = 'gpt-4o';
-            if (aiProvider === 'anthropic')
-                model = 'claude-sonnet-4-20250514';
-            if (aiProvider === 'ollama')
-                model = 'llama3';
+            if (aiProvider === "openai" || aiProvider === "openrouter")
+                model = "gpt-4o";
+            if (aiProvider === "anthropic")
+                model = "claude-sonnet-4-20250514";
+            if (aiProvider === "ollama")
+                model = "llama3";
         }
-        const reviewLevel = core.getInput('review_level') || 'full';
-        const maxFiles = parseInt(core.getInput('max_files') || '10', 10);
+        const reviewLevel = core.getInput("review_level") || "full";
+        const maxFiles = parseInt(core.getInput("max_files") || "10", 10);
         const context = github.context;
         if (!context.payload.pull_request) {
-            core.info('Not a PR event, skipping.');
+            core.info("Not a PR event, skipping.");
             return;
         }
         const prNumber = context.payload.pull_request.number;
         const title = context.payload.pull_request.title;
-        if (title.includes('[skip-review]')) {
-            core.info('PR title contains [skip-review], skipping.');
+        if (title.includes("[skip-review]")) {
+            core.info("PR title contains [skip-review], skipping.");
             return;
         }
         const prDetails = await (0, github_1.getPRDetails)(token);
         const diff = await (0, github_1.getPRDiff)(token, prNumber);
         const files = (0, diff_parser_1.parseDiff)(diff).slice(0, maxFiles);
         const comments = [];
-        let summaryBody = '## 🤖 AI Code Review Summary\n\n';
-        for (const file of files) {
-            if (!file.diff.trim())
-                continue;
-            const review = await (0, ai_1.getReview)({
-                aiProvider,
-                openaiApiKey,
-                anthropicApiKey,
-                openrouterApiKey,
-                baseUrl,
-                ollamaHost,
-                model,
-                diff: file.diff,
-                reviewLevel
-            });
-            if (!review)
-                continue;
-            summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
-            if (review.issues && review.issues.length > 0) {
-                summaryBody += '| Line | Severity | Issue | Suggestion |\n|---|---|---|---|\n';
-                for (const issue of review.issues) {
-                    summaryBody += `| ${issue.line} | ${issue.severity} | ${issue.message} | ${issue.suggestion} |\n`;
-                    comments.push({
-                        path: file.filename,
-                        body: `**${issue.severity.toUpperCase()}**: ${issue.message}\n\n*Suggestion*: ${issue.suggestion}`,
-                        line: issue.line > 0 ? issue.line : 1
-                    });
+        let summaryBody = "## 🤖 AI Code Review Summary\n\n";
+        // ⚡ Bolt: Batch processing to improve performance without hitting rate limits
+        const BATCH_SIZE = 3;
+        for (let i = 0; i < files.length; i += BATCH_SIZE) {
+            const batch = files.slice(i, i + BATCH_SIZE);
+            const batchResults = await Promise.all(batch.map(async (file) => {
+                if (!file.diff.trim())
+                    return null;
+                const review = await (0, ai_1.getReview)({
+                    aiProvider,
+                    openaiApiKey,
+                    anthropicApiKey,
+                    openrouterApiKey,
+                    baseUrl,
+                    ollamaHost,
+                    model,
+                    diff: file.diff,
+                    reviewLevel,
+                });
+                return { file, review };
+            }));
+            for (const result of batchResults) {
+                if (!result || !result.review)
+                    continue;
+                const { file, review } = result;
+                summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
+                if (review.issues && review.issues.length > 0) {
+                    summaryBody +=
+                        "| Line | Severity | Issue | Suggestion |\n|---|---|---|---|\n";
+                    for (const issue of review.issues) {
+                        summaryBody += `| ${issue.line} | ${issue.severity} | ${issue.message} | ${issue.suggestion} |\n`;
+                        comments.push({
+                            path: file.filename,
+                            body: `**${issue.severity.toUpperCase()}**: ${issue.message}\n\n*Suggestion*: ${issue.suggestion}`,
+                            line: issue.line > 0 ? issue.line : 1,
+                        });
+                    }
+                    summaryBody += "\n";
                 }
-                summaryBody += '\n';
             }
         }
         await (0, github_1.postReviewComments)(token, prNumber, prDetails.head.sha, comments);
