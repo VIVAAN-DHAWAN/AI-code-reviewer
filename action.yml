@@ -1,44 +1,44 @@
-name: 'AI Code Reviewer Pro'
-description: 'Automatically review Pull Requests using AI — supports OpenAI, Anthropic, OpenRouter, and local Ollama models'
-author: 'VIVAAN-DHAWAN'
+name: "AI Code Reviewer Pro"
+description: "Automatically review Pull Requests using AI — supports OpenAI, Anthropic, OpenRouter, and local Ollama models"
+author: "VIVAAN-DHAWAN"
 branding:
-  icon: 'code'
-  color: 'purple'
+  icon: "code"
+  color: "purple"
 inputs:
   github_token:
-    description: 'GITHUB_TOKEN to interact with PR'
+    description: "GITHUB_TOKEN to interact with PR"
     required: true
   ai_provider:
     description: '"openai" | "ollama" | "openrouter" | "anthropic"'
     required: false
-    default: 'openai'
+    default: "openai"
   openai_api_key:
-    description: 'OpenAI API Key'
+    description: "OpenAI API Key"
     required: false
   anthropic_api_key:
-    description: 'Anthropic API Key'
+    description: "Anthropic API Key"
     required: false
   openrouter_api_key:
-    description: 'OpenRouter API Key'
+    description: "OpenRouter API Key"
     required: false
   base_url:
-    description: 'Custom API base URL'
+    description: "Custom API base URL"
     required: false
   ollama_host:
-    description: 'Ollama host URL'
+    description: "Ollama host URL"
     required: false
-    default: 'http://localhost:11434'
+    default: "http://localhost:11434"
   model:
-    description: 'Model to use'
+    description: "Model to use"
     required: false
   review_level:
-    description: 'Review level: light | full'
+    description: "Review level: light | full"
     required: false
-    default: 'full'
+    default: "full"
   max_files:
-    description: 'Max number of files to review'
+    description: "Max number of files to review"
     required: false
-    default: '10'
+    default: "10"
 runs:
-  using: 'node20'
-  main: 'dist/index.js'
+  using: "node20"
+  main: "dist/index.js"
