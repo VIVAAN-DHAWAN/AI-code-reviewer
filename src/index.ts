@@ -45,8 +45,11 @@ async function run() {
       return;
     }
 
-    const prDetails = await getPRDetails(token);
-    const diff = await getPRDiff(token, prNumber);
+    // ⚡ Bolt: Fetch PR details and diff concurrently to reduce API latency
+    const [prDetails, diff] = await Promise.all([
+      getPRDetails(token),
+      getPRDiff(token, prNumber)
+    ]);
     const files = parseDiff(diff).slice(0, maxFiles);
 
     const comments: { path: string; body: string; line: number }[] = [];
