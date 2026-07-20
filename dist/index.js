@@ -10265,9 +10265,9 @@ const format_url = Url.format;
  */
 function parseURL(urlStr) {
 	/*
- 	Check whether the URL is absolute or not
- 		Scheme: https://tools.ietf.org/html/rfc3986#section-3.1
- 	Absolute URL: https://tools.ietf.org/html/rfc3986#section-4.3
+	Check whether the URL is absolute or not
+		Scheme: https://tools.ietf.org/html/rfc3986#section-3.1
+	Absolute URL: https://tools.ietf.org/html/rfc3986#section-4.3
  */
 	if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.exec(urlStr)) {
 		urlStr = new URL(urlStr).toString();
@@ -35915,68 +35915,78 @@ const ai_1 = __nccwpck_require__(2382);
 const github_1 = __nccwpck_require__(9248);
 async function run() {
     try {
-        const token = core.getInput('github_token', { required: true });
-        const aiProvider = core.getInput('ai_provider') || 'openai';
-        const openaiApiKey = core.getInput('openai_api_key');
-        const anthropicApiKey = core.getInput('anthropic_api_key');
-        const openrouterApiKey = core.getInput('openrouter_api_key');
-        const baseUrl = core.getInput('base_url');
-        const ollamaHost = core.getInput('ollama_host') || 'http://localhost:11434';
-        let model = core.getInput('model');
+        const token = core.getInput("github_token", { required: true });
+        const aiProvider = core.getInput("ai_provider") || "openai";
+        const openaiApiKey = core.getInput("openai_api_key");
+        const anthropicApiKey = core.getInput("anthropic_api_key");
+        const openrouterApiKey = core.getInput("openrouter_api_key");
+        const baseUrl = core.getInput("base_url");
+        const ollamaHost = core.getInput("ollama_host") || "http://localhost:11434";
+        let model = core.getInput("model");
         if (!model) {
-            if (aiProvider === 'openai' || aiProvider === 'openrouter')
-                model = 'gpt-4o';
-            if (aiProvider === 'anthropic')
-                model = 'claude-sonnet-4-20250514';
-            if (aiProvider === 'ollama')
-                model = 'llama3';
+            if (aiProvider === "openai" || aiProvider === "openrouter")
+                model = "gpt-4o";
+            if (aiProvider === "anthropic")
+                model = "claude-sonnet-4-20250514";
+            if (aiProvider === "ollama")
+                model = "llama3";
         }
-        const reviewLevel = core.getInput('review_level') || 'full';
-        const maxFiles = parseInt(core.getInput('max_files') || '10', 10);
+        const reviewLevel = core.getInput("review_level") || "full";
+        const maxFiles = parseInt(core.getInput("max_files") || "10", 10);
         const context = github.context;
         if (!context.payload.pull_request) {
-            core.info('Not a PR event, skipping.');
+            core.info("Not a PR event, skipping.");
             return;
         }
         const prNumber = context.payload.pull_request.number;
         const title = context.payload.pull_request.title;
-        if (title.includes('[skip-review]')) {
-            core.info('PR title contains [skip-review], skipping.');
+        if (title.includes("[skip-review]")) {
+            core.info("PR title contains [skip-review], skipping.");
             return;
         }
         const prDetails = await (0, github_1.getPRDetails)(token);
         const diff = await (0, github_1.getPRDiff)(token, prNumber);
         const files = (0, diff_parser_1.parseDiff)(diff).slice(0, maxFiles);
         const comments = [];
-        let summaryBody = '## 🤖 AI Code Review Summary\n\n';
-        for (const file of files) {
-            if (!file.diff.trim())
-                continue;
-            const review = await (0, ai_1.getReview)({
-                aiProvider,
-                openaiApiKey,
-                anthropicApiKey,
-                openrouterApiKey,
-                baseUrl,
-                ollamaHost,
-                model,
-                diff: file.diff,
-                reviewLevel
-            });
-            if (!review)
-                continue;
-            summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
-            if (review.issues && review.issues.length > 0) {
-                summaryBody += '| Line | Severity | Issue | Suggestion |\n|---|---|---|---|\n';
-                for (const issue of review.issues) {
-                    summaryBody += `| ${issue.line} | ${issue.severity} | ${issue.message} | ${issue.suggestion} |\n`;
-                    comments.push({
-                        path: file.filename,
-                        body: `**${issue.severity.toUpperCase()}**: ${issue.message}\n\n*Suggestion*: ${issue.suggestion}`,
-                        line: issue.line > 0 ? issue.line : 1
-                    });
+        let summaryBody = "## 🤖 AI Code Review Summary\n\n";
+        // ⚡ Bolt: Process files in batches to parallelize external AI API requests without hitting rate limits
+        const BATCH_SIZE = 3;
+        for (let i = 0; i < files.length; i += BATCH_SIZE) {
+            const batch = files.slice(i, i + BATCH_SIZE);
+            const batchResults = await Promise.all(batch.map(async (file) => {
+                if (!file.diff.trim())
+                    return null;
+                const review = await (0, ai_1.getReview)({
+                    aiProvider,
+                    openaiApiKey,
+                    anthropicApiKey,
+                    openrouterApiKey,
+                    baseUrl,
+                    ollamaHost,
+                    model,
+                    diff: file.diff,
+                    reviewLevel,
+                });
+                return { file, review };
+            }));
+            for (const result of batchResults) {
+                if (!result || !result.review)
+                    continue;
+                const { file, review } = result;
+                summaryBody += `### ${file.filename}\n${review.summary}\n\n`;
+                if (review.issues && review.issues.length > 0) {
+                    summaryBody +=
+                        "| Line | Severity | Issue | Suggestion |\n|---|---|---|---|\n";
+                    for (const issue of review.issues) {
+                        summaryBody += `| ${issue.line} | ${issue.severity} | ${issue.message} | ${issue.suggestion} |\n`;
+                        comments.push({
+                            path: file.filename,
+                            body: `**${issue.severity.toUpperCase()}**: ${issue.message}\n\n*Suggestion*: ${issue.suggestion}`,
+                            line: issue.line > 0 ? issue.line : 1,
+                        });
+                    }
+                    summaryBody += "\n";
                 }
-                summaryBody += '\n';
             }
         }
         await (0, github_1.postReviewComments)(token, prNumber, prDetails.head.sha, comments);
@@ -41123,7 +41133,7 @@ function inner_stringify(object, prefix, generateArrayPrefix, commaRoundTrip, al
     }
     for (let j = 0; j < obj_keys.length; ++j) {
         const key = obj_keys[j];
-        const value = 
+        const value =
         // @ts-ignore
         typeof key === 'object' && typeof key.value !== 'undefined' ? key.value : obj[key];
         if (skipNulls && value === null) {
@@ -41139,7 +41149,7 @@ function inner_stringify(object, prefix, generateArrayPrefix, commaRoundTrip, al
         sideChannel.set(object, step);
         const valueSideChannel = new WeakMap();
         valueSideChannel.set(sentinel, sideChannel);
-        push_to_array(values, inner_stringify(value, key_prefix, generateArrayPrefix, commaRoundTrip, allowEmptyArrays, strictNullHandling, skipNulls, encodeDotInKeys, 
+        push_to_array(values, inner_stringify(value, key_prefix, generateArrayPrefix, commaRoundTrip, allowEmptyArrays, strictNullHandling, skipNulls, encodeDotInKeys,
         // @ts-ignore
         generateArrayPrefix === 'comma' && encodeValuesOnly && is_array(obj) ? null : encoder, filter, sort, allowDots, serializeDate, format, formatter, encodeValuesOnly, charset, valueSideChannel));
     }
@@ -41244,7 +41254,7 @@ function stringify(object, opts = {}) {
         if (options.skipNulls && obj[key] === null) {
             continue;
         }
-        push_to_array(keys, inner_stringify(obj[key], key, 
+        push_to_array(keys, inner_stringify(obj[key], key,
         // @ts-expect-error
         generateArrayPrefix, commaRoundTrip, options.allowEmptyArrays, options.strictNullHandling, options.skipNulls, options.encodeDotInKeys, options.encode ? options.encoder : null, options.filter, options.sort, options.allowDots, options.serializeDate, options.format, options.formatter, options.encodeValuesOnly, options.charset, sideChannel));
     }
@@ -47999,7 +48009,7 @@ module.exports = /*#__PURE__*/JSON.parse('[[[0,44],"disallowed_STD3_valid"],[[45
 /************************************************************************/
 /******/ 	// The module cache
 /******/ 	var __webpack_module_cache__ = {};
-/******/ 	
+/******/
 /******/ 	// The require function
 /******/ 	function __nccwpck_require__(moduleId) {
 /******/ 		// Check if module is in cache
@@ -48013,7 +48023,7 @@ module.exports = /*#__PURE__*/JSON.parse('[[[0,44],"disallowed_STD3_valid"],[[45
 /******/ 			// no module.loaded needed
 /******/ 			exports: {}
 /******/ 		};
-/******/ 	
+/******/
 /******/ 		// Execute the module function
 /******/ 		var threw = true;
 /******/ 		try {
@@ -48022,23 +48032,23 @@ module.exports = /*#__PURE__*/JSON.parse('[[[0,44],"disallowed_STD3_valid"],[[45
 /******/ 		} finally {
 /******/ 			if(threw) delete __webpack_module_cache__[moduleId];
 /******/ 		}
-/******/ 	
+/******/
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
 /******/ 	}
-/******/ 	
+/******/
 /************************************************************************/
 /******/ 	/* webpack/runtime/compat */
-/******/ 	
+/******/
 /******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";
-/******/ 	
+/******/
 /************************************************************************/
-/******/ 	
+/******/
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
 /******/ 	// This entry module is referenced by other modules so it can't be inlined
 /******/ 	var __webpack_exports__ = __nccwpck_require__(9407);
 /******/ 	module.exports = __webpack_exports__;
-/******/ 	
+/******/
 /******/ })()
 ;
