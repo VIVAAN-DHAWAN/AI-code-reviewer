@@ -1,0 +1,4 @@
+💡 What: Replaced sequential `await` calls with `Promise.all` for `getPRDetails`/`getPRDiff` and `postReviewComments`/`postSummary` in `src/index.ts`.
+🎯 Why: These GitHub API calls are independent of each other. Waiting for them sequentially adds unnecessary network roundtrip latency, slowing down the GitHub action.
+📊 Impact: Reduces total latency by the length of the slower network request in each pair. E.g. instead of `t_details + t_diff`, the wait time becomes `max(t_details, t_diff)`.
+🔬 Measurement: Verify action total execution time on the CI before and after the change for a PR with the same number of files.
