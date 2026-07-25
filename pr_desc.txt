@@ -1,0 +1,4 @@
+💡 **What**: Changed sequential `await` calls for `getPRDetails` and `getPRDiff` to run concurrently using `Promise.all`.
+🎯 **Why**: The GitHub Action was waiting for `getPRDetails` to finish before starting `getPRDiff`, which resulted in double the network latency. Since these requests are independent, they can be made simultaneously.
+📊 **Impact**: Reduces total GitHub API wait time before starting the AI review by ~100-500ms per Action execution.
+🔬 **Measurement**: Look at the execution time of the setup phase in the GitHub Actions workflow logs before and after this change.
