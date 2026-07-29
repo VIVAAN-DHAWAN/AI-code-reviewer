@@ -35650,7 +35650,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getReview = getReview;
 const openai_1 = __importDefault(__nccwpck_require__(2583));
 async function getReview(opts) {
-    const { aiProvider, openaiApiKey, anthropicApiKey, openrouterApiKey, baseUrl, ollamaHost, model, diff, reviewLevel } = opts;
+    const { aiProvider, openaiApiKey, anthropicApiKey, openrouterApiKey, baseUrl, ollamaHost, model, diff, reviewLevel, } = opts;
     const systemPrompt = `You are an expert code reviewer. Review the following code diff and identify:
 1. Bugs or logic errors
 2. Security vulnerabilities
@@ -35673,20 +35673,20 @@ Return structured JSON matching this schema:
 }`;
     const userPrompt = `Review level: ${reviewLevel}\n\nDiff:\n${diff}`;
     try {
-        if (aiProvider === 'anthropic') {
-            const response = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
+        if (aiProvider === "anthropic") {
+            const response = await fetch("https://api.anthropic.com/v1/messages", {
+                method: "POST",
                 headers: {
-                    'x-api-key': anthropicApiKey || '',
-                    'anthropic-version': '2023-06-01',
-                    'content-type': 'application/json'
+                    "x-api-key": anthropicApiKey || "",
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
                 },
                 body: JSON.stringify({
                     model,
                     max_tokens: 4096,
                     system: systemPrompt,
-                    messages: [{ role: 'user', content: userPrompt }]
-                })
+                    messages: [{ role: "user", content: userPrompt }],
+                }),
             });
             if (!response.ok) {
                 throw new Error(`Anthropic Error: ${await response.text()}`);
@@ -35694,22 +35694,25 @@ Return structured JSON matching this schema:
             const data = await response.json();
             const content = data.content[0].text;
             // Attempt to extract JSON from markdown if needed
-            const jsonStr = content.replace(/```json\n/g, '').replace(/```/g, '').trim();
+            const jsonStr = content
+                .replace(/```json\n/g, "")
+                .replace(/```/g, "")
+                .trim();
             return JSON.parse(jsonStr);
         }
-        if (aiProvider === 'ollama') {
+        if (aiProvider === "ollama") {
             const response = await fetch(`${ollamaHost}/api/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     model,
                     stream: false,
-                    format: 'json',
+                    format: "json",
                     messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: userPrompt }
-                    ]
-                })
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: userPrompt },
+                    ],
+                }),
             });
             if (!response.ok) {
                 throw new Error(`Ollama Error: ${await response.text()}`);
@@ -35718,18 +35721,18 @@ Return structured JSON matching this schema:
             return JSON.parse(data.message.content);
         }
         // Default: OpenAI or OpenRouter
-        const isOpenRouter = aiProvider === 'openrouter';
+        const isOpenRouter = aiProvider === "openrouter";
         const client = new openai_1.default({
             apiKey: isOpenRouter ? openrouterApiKey : openaiApiKey,
-            baseURL: isOpenRouter ? 'https://openrouter.ai/api/v1' : baseUrl,
+            baseURL: isOpenRouter ? "https://openrouter.ai/api/v1" : baseUrl,
         });
         const response = await client.chat.completions.create({
             model,
             messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt },
             ],
-            response_format: { type: 'json_object' }
+            response_format: { type: "json_object" },
         });
         const content = response.choices[0].message?.content;
         if (!content)
@@ -35754,16 +35757,16 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.parseDiff = parseDiff;
 function parseDiff(diffString) {
     const files = diffString.split(/^diff --git a\//m).filter(Boolean);
-    return files.map(file => {
-        const lines = file.split('\n');
+    return files.map((file) => {
+        const lines = file.split("\n");
         const filenameMatch = lines[0].match(/.*? b\/(.*)/);
-        const filename = filenameMatch ? filenameMatch[1] : 'unknown';
+        const filename = filenameMatch ? filenameMatch[1] : "unknown";
         // Extract actual diff lines without header
-        const startIdx = lines.findIndex(line => line.startsWith('+++'));
-        const diffContent = startIdx !== -1 ? lines.slice(startIdx + 1).join('\n') : file;
+        const startIdx = lines.findIndex((line) => line.startsWith("+++"));
+        const diffContent = startIdx !== -1 ? lines.slice(startIdx + 1).join("\n") : file;
         return {
             filename,
-            diff: diffContent
+            diff: diffContent,
         };
     });
 }
@@ -35819,12 +35822,12 @@ async function getPRDetails(token) {
     const octokit = github.getOctokit(token);
     const context = github.context;
     if (!context.payload.pull_request) {
-        throw new Error('Not running in a PR context');
+        throw new Error("Not running in a PR context");
     }
     const { data: pr } = await octokit.rest.pulls.get({
         owner: context.repo.owner,
         repo: context.repo.repo,
-        pull_number: context.payload.pull_request.number
+        pull_number: context.payload.pull_request.number,
     });
     return pr;
 }
@@ -35836,8 +35839,8 @@ async function getPRDiff(token, pullNumber) {
         repo: context.repo.repo,
         pull_number: pullNumber,
         mediaType: {
-            format: 'diff'
-        }
+            format: "diff",
+        },
     });
     return diff;
 }
@@ -35851,8 +35854,8 @@ async function postReviewComments(token, pullNumber, commitId, comments) {
         repo: context.repo.repo,
         pull_number: pullNumber,
         commit_id: commitId,
-        event: 'COMMENT',
-        comments
+        event: "COMMENT",
+        comments,
     });
 }
 async function postSummary(token, issueNumber, summary) {
@@ -35862,7 +35865,7 @@ async function postSummary(token, issueNumber, summary) {
         owner: context.repo.owner,
         repo: context.repo.repo,
         issue_number: issueNumber,
-        body: summary
+        body: summary,
     });
 }
 
@@ -35944,8 +35947,11 @@ async function run() {
             core.info("PR title contains [skip-review], skipping.");
             return;
         }
-        const prDetails = await (0, github_1.getPRDetails)(token);
-        const diff = await (0, github_1.getPRDiff)(token, prNumber);
+        // ⚡ Bolt: Parallelize independent GitHub API calls to reduce total fetch time
+        const [prDetails, diff] = await Promise.all([
+            (0, github_1.getPRDetails)(token),
+            (0, github_1.getPRDiff)(token, prNumber),
+        ]);
         const files = (0, diff_parser_1.parseDiff)(diff).slice(0, maxFiles);
         const comments = [];
         let summaryBody = "## 🤖 AI Code Review Summary\n\n";
@@ -35989,8 +35995,11 @@ async function run() {
                 }
             }
         }
-        await (0, github_1.postReviewComments)(token, prNumber, prDetails.head.sha, comments);
-        await (0, github_1.postSummary)(token, prNumber, summaryBody);
+        // ⚡ Bolt: Parallelize post-review actions to return faster
+        await Promise.all([
+            (0, github_1.postReviewComments)(token, prNumber, prDetails.head.sha, comments),
+            (0, github_1.postSummary)(token, prNumber, summaryBody),
+        ]);
     }
     catch (error) {
         core.setFailed(`Action failed: ${error.message}`);

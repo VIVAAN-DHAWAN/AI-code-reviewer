@@ -1,0 +1,7 @@
+💡 **What**: Replaced sequential independent `getPRDetails`/`getPRDiff` API calls and `postReviewComments`/`postSummary` API calls with `Promise.all`.
+
+🎯 **Why**: These API calls do not depend on each other's output. Running them sequentially increases the total execution time of the GitHub Action unnecessarily. Running them concurrently is a safer, cleaner way to reduce I/O waiting time.
+
+📊 **Impact**: Total execution time should decrease by roughly the duration of the shorter network call in each pair. E.g., if fetching details takes 300ms and diff takes 500ms, total time reduces from 800ms to 500ms. Same for posting comments.
+
+🔬 **Measurement**: Check the execution time of the GitHub action before and after this change in the GitHub Actions tab. The overall time taken in the `index.ts` script should be lower.

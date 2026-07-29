@@ -45,8 +45,11 @@ async function run() {
       return;
     }
 
-    const prDetails = await getPRDetails(token);
-    const diff = await getPRDiff(token, prNumber);
+    // ⚡ Bolt: Parallelize independent GitHub API calls to reduce total fetch time
+    const [prDetails, diff] = await Promise.all([
+      getPRDetails(token),
+      getPRDiff(token, prNumber),
+    ]);
     const files = parseDiff(diff).slice(0, maxFiles);
 
     const comments: { path: string; body: string; line: number }[] = [];
@@ -99,8 +102,11 @@ async function run() {
       }
     }
 
-    await postReviewComments(token, prNumber, prDetails.head.sha, comments);
-    await postSummary(token, prNumber, summaryBody);
+    // ⚡ Bolt: Parallelize post-review actions to return faster
+    await Promise.all([
+      postReviewComments(token, prNumber, prDetails.head.sha, comments),
+      postSummary(token, prNumber, summaryBody),
+    ]);
   } catch (error: any) {
     core.setFailed(`Action failed: ${error.message}`);
   }
