@@ -35754,16 +35754,35 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.parseDiff = parseDiff;
 function parseDiff(diffString) {
     const files = diffString.split(/^diff --git a\//m).filter(Boolean);
-    return files.map(file => {
-        const lines = file.split('\n');
-        const filenameMatch = lines[0].match(/.*? b\/(.*)/);
-        const filename = filenameMatch ? filenameMatch[1] : 'unknown';
+    return files.map((file) => {
+        // ⚡ Bolt: Use string search methods instead of .split('\n') to avoid
+        // excessive memory allocations and CPU overhead for large PR diffs
+        const firstNewlineIdx = file.indexOf("\n");
+        const firstLine = firstNewlineIdx !== -1 ? file.substring(0, firstNewlineIdx) : file;
+        const filenameMatch = firstLine.match(/.*? b\/(.*)/);
+        const filename = filenameMatch ? filenameMatch[1] : "unknown";
         // Extract actual diff lines without header
-        const startIdx = lines.findIndex(line => line.startsWith('+++'));
-        const diffContent = startIdx !== -1 ? lines.slice(startIdx + 1).join('\n') : file;
+        // The "+++" string usually appears at the start of a line indicating added file
+        // Let's find the start of the line that begins with "+++"
+        const plusPlusPlusIdx = file.indexOf("\n+++");
+        let diffContent = file;
+        if (plusPlusPlusIdx !== -1) {
+            // Find the newline after the "+++" line to get the actual diff content
+            const diffStartIdx = file.indexOf("\n", plusPlusPlusIdx + 1);
+            if (diffStartIdx !== -1) {
+                diffContent = file.substring(diffStartIdx + 1);
+            }
+        }
+        else if (file.startsWith("+++")) {
+            // Edge case where file string starts exactly with "+++" without preceding newline
+            const diffStartIdx = file.indexOf("\n");
+            if (diffStartIdx !== -1) {
+                diffContent = file.substring(diffStartIdx + 1);
+            }
+        }
         return {
             filename,
-            diff: diffContent
+            diff: diffContent,
         };
     });
 }
