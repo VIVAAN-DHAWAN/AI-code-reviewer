@@ -6,3 +6,7 @@
 ## 2024-08-01 - Sequential GitHub API Requests
 **Learning:** Initializing PR data involved fetching PR details and diff sequentially from the GitHub API using `await getPRDetails` and `await getPRDiff` in `src/index.ts`. Since these requests don't depend on each other, this adds unnecessary latency.
 **Action:** Use `Promise.all()` to parallelize independent API requests (like fetching details and diffs) to improve initialization speed.
+
+## 2024-10-24 - Diff Parsing Memory Optimization
+**Learning:** Using `split('\n')` on large PR diff strings creates excessive memory allocations and CPU overhead by generating an array of strings for every line.
+**Action:** When parsing large text chunks like diffs, avoid `split('\n')` where possible and use string search methods (`indexOf` and `substring`) instead.
