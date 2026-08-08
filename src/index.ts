@@ -125,6 +125,14 @@ async function run() {
       }
     }
 
+    // GitHub caps comments at 65536 chars; truncate defensively.
+    const MAX_SUMMARY_LENGTH = 64000;
+    if (summaryBody.length > MAX_SUMMARY_LENGTH) {
+      summaryBody =
+        summaryBody.substring(0, MAX_SUMMARY_LENGTH) +
+        "\n\n> _Summary truncated: output exceeded the GitHub comment size limit._";
+    }
+
     await postReviewComments(token, prNumber, prDetails.head.sha, comments);
     await postSummary(token, prNumber, summaryBody);
   } catch (error: any) {
