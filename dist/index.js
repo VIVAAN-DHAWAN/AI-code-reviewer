@@ -36199,6 +36199,7 @@ async function callOllama(opts) {
             model: opts.model,
             stream: false,
             format: 'json',
+            keep_alive: '30m',
             messages: [
                 { role: 'system', content: (0, types_1.buildSystemPrompt)(opts.reviewLevel) },
                 { role: 'user', content: (0, types_1.buildUserPrompt)(opts) },

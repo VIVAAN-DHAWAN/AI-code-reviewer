@@ -12,6 +12,7 @@ export async function callOllama(opts: ReviewOptions): Promise<ReviewResult> {
         model: opts.model,
         stream: false,
         format: 'json',
+        keep_alive: '30m',
         messages: [
           { role: 'system', content: buildSystemPrompt(opts.reviewLevel) },
           { role: 'user', content: buildUserPrompt(opts) },
