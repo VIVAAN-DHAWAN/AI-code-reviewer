@@ -35639,108 +35639,15 @@ function wrappy (fn, cb) {
 /***/ }),
 
 /***/ 2382:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getReview = getReview;
-const openai_1 = __importDefault(__nccwpck_require__(2583));
-async function getReview(opts) {
-    const { aiProvider, openaiApiKey, anthropicApiKey, openrouterApiKey, baseUrl, ollamaHost, model, diff, reviewLevel } = opts;
-    const systemPrompt = `You are an expert code reviewer. Review the following code diff and identify:
-1. Bugs or logic errors
-2. Security vulnerabilities
-3. Performance issues
-4. Code style / best practices
-5. Suggestions for improvement
-
-Be concise. For each issue, specify the line number, severity (critical/warning/suggestion), and a fix.
-Return structured JSON matching this schema:
-{
-  "summary": "Overall review summary",
-  "issues": [
-    {
-      "line": 42,
-      "severity": "critical",
-      "message": "SQL injection vulnerability",
-      "suggestion": "Use parameterized queries"
-    }
-  ]
-}`;
-    const userPrompt = `Review level: ${reviewLevel}\n\nDiff:\n${diff}`;
-    try {
-        if (aiProvider === 'anthropic') {
-            const response = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                    'x-api-key': anthropicApiKey || '',
-                    'anthropic-version': '2023-06-01',
-                    'content-type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model,
-                    max_tokens: 4096,
-                    system: systemPrompt,
-                    messages: [{ role: 'user', content: userPrompt }]
-                })
-            });
-            if (!response.ok) {
-                throw new Error(`Anthropic Error: ${await response.text()}`);
-            }
-            const data = await response.json();
-            const content = data.content[0].text;
-            // Attempt to extract JSON from markdown if needed
-            const jsonStr = content.replace(/```json\n/g, '').replace(/```/g, '').trim();
-            return JSON.parse(jsonStr);
-        }
-        if (aiProvider === 'ollama') {
-            const response = await fetch(`${ollamaHost}/api/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model,
-                    stream: false,
-                    format: 'json',
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: userPrompt }
-                    ]
-                })
-            });
-            if (!response.ok) {
-                throw new Error(`Ollama Error: ${await response.text()}`);
-            }
-            const data = await response.json();
-            return JSON.parse(data.message.content);
-        }
-        // Default: OpenAI or OpenRouter
-        const isOpenRouter = aiProvider === 'openrouter';
-        const client = new openai_1.default({
-            apiKey: isOpenRouter ? openrouterApiKey : openaiApiKey,
-            baseURL: isOpenRouter ? 'https://openrouter.ai/api/v1' : baseUrl,
-        });
-        const response = await client.chat.completions.create({
-            model,
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
-            ],
-            response_format: { type: 'json_object' }
-        });
-        const content = response.choices[0].message?.content;
-        if (!content)
-            return null;
-        return JSON.parse(content);
-    }
-    catch (error) {
-        console.error(`AI API Error (${aiProvider}):`, error);
-        return null;
-    }
-}
+exports.extractJson = exports.getReview = void 0;
+var providers_1 = __nccwpck_require__(7486);
+Object.defineProperty(exports, "getReview", ({ enumerable: true, get: function () { return providers_1.getReview; } }));
+Object.defineProperty(exports, "extractJson", ({ enumerable: true, get: function () { return providers_1.extractJson; } }));
 
 
 /***/ }),
@@ -36023,6 +35930,196 @@ async function run() {
     }
 }
 run();
+
+
+/***/ }),
+
+/***/ 9222:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.callAnthropic = callAnthropic;
+const types_1 = __nccwpck_require__(2695);
+const extract_json_1 = __nccwpck_require__(1562);
+async function callAnthropic(opts) {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'x-api-key': opts.anthropicApiKey || '',
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+            model: opts.model,
+            max_tokens: 4096,
+            system: types_1.SYSTEM_PROMPT,
+            messages: [{ role: 'user', content: (0, types_1.buildUserPrompt)(opts) }],
+        }),
+    });
+    if (!response.ok) {
+        throw new Error(`Anthropic Error: ${await response.text()}`);
+    }
+    const data = await response.json();
+    const content = data.content[0].text;
+    return JSON.parse((0, extract_json_1.extractJson)(content));
+}
+
+
+/***/ }),
+
+/***/ 1562:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.extractJson = extractJson;
+// Extracts a JSON payload from a model response, tolerating markdown code fences.
+function extractJson(content) {
+    const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fenced) {
+        return fenced[1].trim();
+    }
+    return content.trim();
+}
+
+
+/***/ }),
+
+/***/ 7486:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.extractJson = void 0;
+exports.getReview = getReview;
+const openai_1 = __nccwpck_require__(8238);
+const anthropic_1 = __nccwpck_require__(9222);
+const ollama_1 = __nccwpck_require__(342);
+var extract_json_1 = __nccwpck_require__(1562);
+Object.defineProperty(exports, "extractJson", ({ enumerable: true, get: function () { return extract_json_1.extractJson; } }));
+async function getReview(opts) {
+    try {
+        if (opts.aiProvider === 'anthropic') {
+            return await (0, anthropic_1.callAnthropic)(opts);
+        }
+        if (opts.aiProvider === 'ollama') {
+            return await (0, ollama_1.callOllama)(opts);
+        }
+        return await (0, openai_1.callOpenAI)(opts);
+    }
+    catch (error) {
+        console.error(`AI API Error (${opts.aiProvider}):`, error);
+        return null;
+    }
+}
+
+
+/***/ }),
+
+/***/ 342:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.callOllama = callOllama;
+const types_1 = __nccwpck_require__(2695);
+const extract_json_1 = __nccwpck_require__(1562);
+async function callOllama(opts) {
+    const response = await fetch(`${opts.ollamaHost}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            model: opts.model,
+            stream: false,
+            format: 'json',
+            messages: [
+                { role: 'system', content: types_1.SYSTEM_PROMPT },
+                { role: 'user', content: (0, types_1.buildUserPrompt)(opts) },
+            ],
+        }),
+    });
+    if (!response.ok) {
+        throw new Error(`Ollama Error: ${await response.text()}`);
+    }
+    const data = await response.json();
+    return JSON.parse((0, extract_json_1.extractJson)(data.message.content));
+}
+
+
+/***/ }),
+
+/***/ 8238:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.callOpenAI = callOpenAI;
+const openai_1 = __importDefault(__nccwpck_require__(2583));
+const types_1 = __nccwpck_require__(2695);
+async function callOpenAI(opts) {
+    const isOpenRouter = opts.aiProvider === 'openrouter';
+    const client = new openai_1.default({
+        apiKey: isOpenRouter ? opts.openrouterApiKey : opts.openaiApiKey,
+        baseURL: isOpenRouter ? 'https://openrouter.ai/api/v1' : opts.baseUrl,
+    });
+    const response = await client.chat.completions.create({
+        model: opts.model,
+        messages: [
+            { role: 'system', content: types_1.SYSTEM_PROMPT },
+            { role: 'user', content: (0, types_1.buildUserPrompt)(opts) },
+        ],
+        response_format: { type: 'json_object' },
+    });
+    const content = response.choices[0].message?.content;
+    if (!content) {
+        throw new Error('OpenAI returned an empty response');
+    }
+    return JSON.parse(content);
+}
+
+
+/***/ }),
+
+/***/ 2695:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SYSTEM_PROMPT = void 0;
+exports.buildUserPrompt = buildUserPrompt;
+exports.SYSTEM_PROMPT = `You are an expert code reviewer. Review the following code diff and identify:
+1. Bugs or logic errors
+2. Security vulnerabilities
+3. Performance issues
+4. Code style / best practices
+5. Suggestions for improvement
+
+Be concise. For each issue, specify the line number, severity (critical/warning/suggestion), and a fix.
+Return structured JSON matching this schema:
+{
+  "summary": "Overall review summary",
+  "issues": [
+    {
+      "line": 42,
+      "severity": "critical",
+      "message": "SQL injection vulnerability",
+      "suggestion": "Use parameterized queries"
+    }
+  ]
+}`;
+function buildUserPrompt(opts) {
+    return `Review level: ${opts.reviewLevel}\n\nDiff:\n${opts.diff}`;
+}
 
 
 /***/ }),
