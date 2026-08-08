@@ -36043,6 +36043,30 @@ exports.callAnthropic = callAnthropic;
 const types_1 = __nccwpck_require__(2695);
 const extract_json_1 = __nccwpck_require__(1562);
 const retry_1 = __nccwpck_require__(7252);
+const REVIEW_TOOL = {
+    name: 'emit_review',
+    description: 'Emit the code review as structured JSON',
+    input_schema: {
+        type: 'object',
+        properties: {
+            summary: { type: 'string' },
+            issues: {
+                type: 'array',
+                items: {
+                    type: 'object',
+                    properties: {
+                        line: { type: 'number' },
+                        severity: { type: 'string', enum: ['critical', 'warning', 'suggestion'] },
+                        message: { type: 'string' },
+                        suggestion: { type: 'string' },
+                    },
+                    required: ['line', 'severity', 'message', 'suggestion'],
+                },
+            },
+        },
+        required: ['summary', 'issues'],
+    },
+};
 async function callAnthropic(opts) {
     const response = await (0, retry_1.withTimeout)((signal) => fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -36056,6 +36080,8 @@ async function callAnthropic(opts) {
             max_tokens: 4096,
             system: (0, types_1.buildSystemPrompt)(opts.reviewLevel),
             messages: [{ role: 'user', content: (0, types_1.buildUserPrompt)(opts) }],
+            tools: [REVIEW_TOOL],
+            tool_choice: { type: 'tool', name: 'emit_review' },
         }),
         signal,
     }));
@@ -36063,7 +36089,13 @@ async function callAnthropic(opts) {
         throw new Error(`Anthropic Error: ${await response.text()}`);
     }
     const data = await response.json();
-    const content = data.content[0].text;
+    const toolUse = data.content?.find((block) => block.type === 'tool_use');
+    if (toolUse?.input) {
+        return toolUse.input;
+    }
+    // Fallback: older model responses that ignore tools.
+    const textBlock = data.content?.find((block) => block.type === 'text');
+    const content = textBlock?.text ?? '';
     return JSON.parse((0, extract_json_1.extractJson)(content));
 }
 
