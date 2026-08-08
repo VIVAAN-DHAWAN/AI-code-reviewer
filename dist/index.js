@@ -35946,18 +35946,25 @@ async function run() {
             const batchResults = await Promise.all(batch.map(async (file) => {
                 if (!file.diff.trim())
                     return null;
-                const review = await (0, ai_1.getReview)({
-                    aiProvider,
-                    openaiApiKey,
-                    anthropicApiKey,
-                    openrouterApiKey,
-                    baseUrl,
-                    ollamaHost,
-                    model,
-                    diff: file.diff,
-                    reviewLevel,
-                });
-                return { file, review };
+                try {
+                    const review = await (0, ai_1.getReview)({
+                        aiProvider,
+                        openaiApiKey,
+                        anthropicApiKey,
+                        openrouterApiKey,
+                        baseUrl,
+                        ollamaHost,
+                        model,
+                        diff: file.diff,
+                        reviewLevel,
+                    });
+                    return { file, review };
+                }
+                catch (error) {
+                    // Isolate per-file failures so one bad file doesn't abort the review.
+                    core.warning(`Failed to review ${file.filename}: ${error.message}`);
+                    return { file, review: null };
+                }
             }));
             for (const result of batchResults) {
                 if (!result || !result.review)
