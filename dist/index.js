@@ -35799,6 +35799,42 @@ async function postSummary(token, issueNumber, summary) {
 
 /***/ }),
 
+/***/ 5601:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.globToRegExp = globToRegExp;
+exports.matchesAny = matchesAny;
+exports.parseCommaSeparated = parseCommaSeparated;
+// Minimal glob matcher supporting `*`, `**`, and `?`, used for file filters.
+function globToRegExp(pattern) {
+    const escaped = pattern
+        .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+        .replace(/\*\*/g, '\u0000')
+        .replace(/\*/g, '[^/]*')
+        .replace(/\u0000/g, '.*')
+        .replace(/\?/g, '[^/]');
+    return new RegExp(`^${escaped}$`);
+}
+function matchesAny(filename, patterns) {
+    if (!patterns || patterns.length === 0)
+        return true;
+    return patterns.some((pattern) => globToRegExp(pattern.trim()).test(filename));
+}
+function parseCommaSeparated(input) {
+    if (!input)
+        return [];
+    return input
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+}
+
+
+/***/ }),
+
 /***/ 9407:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -35842,6 +35878,7 @@ const core = __importStar(__nccwpck_require__(7484));
 const github = __importStar(__nccwpck_require__(3228));
 const diff_parser_1 = __nccwpck_require__(6290);
 const ai_1 = __nccwpck_require__(2382);
+const glob_1 = __nccwpck_require__(5601);
 const github_1 = __nccwpck_require__(9248);
 async function run() {
     try {
@@ -35882,6 +35919,8 @@ async function run() {
         ]);
         // Skip empty and binary files, and deduplicate by filename before
         // applying max_files so large rename-heavy PRs don't waste budget.
+        const includePatterns = (0, glob_1.parseCommaSeparated)(core.getInput("file_include"));
+        const excludePatterns = (0, glob_1.parseCommaSeparated)(core.getInput("file_exclude"));
         const seen = new Set();
         const files = (0, diff_parser_1.parseDiff)(diff)
             .filter((f) => {
@@ -35890,6 +35929,12 @@ async function run() {
             if (seen.has(f.filename))
                 return false;
             seen.add(f.filename);
+            if (excludePatterns.length > 0 && (0, glob_1.matchesAny)(f.filename, excludePatterns)) {
+                return false;
+            }
+            if (includePatterns.length > 0 && !(0, glob_1.matchesAny)(f.filename, includePatterns)) {
+                return false;
+            }
             return true;
         })
             .slice(0, maxFiles);

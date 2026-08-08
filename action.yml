@@ -43,6 +43,12 @@ inputs:
     description: 'Number of files reviewed concurrently per batch'
     required: false
     default: '3'
+  file_include:
+    description: 'Comma-separated glob patterns; only matching files are reviewed (empty = all)'
+    required: false
+  file_exclude:
+    description: 'Comma-separated glob patterns; matching files are skipped (empty = none)'
+    required: false
 runs:
   using: 'node20'
   main: 'dist/index.js'
