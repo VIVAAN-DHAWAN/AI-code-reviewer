@@ -15,6 +15,11 @@ jobs:
       - uses: ./
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          ai_provider: openai
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           model: gpt-4o
           review_level: full
+          max_files: 10
+          batch_size: 3
+          # file_include: "src/**/*.{ts,tsx}"
+          # file_exclude: "dist/**,*.lock"
