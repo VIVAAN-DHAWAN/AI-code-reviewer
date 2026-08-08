@@ -35997,6 +35997,7 @@ function extractJson(content) {
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.extractJson = void 0;
+exports.validateOptions = validateOptions;
 exports.getReview = getReview;
 const openai_1 = __nccwpck_require__(8238);
 const anthropic_1 = __nccwpck_require__(9222);
@@ -36004,8 +36005,32 @@ const ollama_1 = __nccwpck_require__(342);
 const retry_1 = __nccwpck_require__(7252);
 var extract_json_1 = __nccwpck_require__(1562);
 Object.defineProperty(exports, "extractJson", ({ enumerable: true, get: function () { return extract_json_1.extractJson; } }));
+function validateOptions(opts) {
+    switch (opts.aiProvider) {
+        case 'anthropic':
+            if (!opts.anthropicApiKey) {
+                throw new Error("Missing anthropic_api_key input: required when ai_provider is 'anthropic'");
+            }
+            break;
+        case 'ollama':
+            if (!opts.ollamaHost) {
+                throw new Error("Missing ollama_host input: required when ai_provider is 'ollama'");
+            }
+            break;
+        case 'openrouter':
+            if (!opts.openrouterApiKey) {
+                throw new Error("Missing openrouter_api_key input: required when ai_provider is 'openrouter'");
+            }
+            break;
+        default:
+            if (!opts.openaiApiKey) {
+                throw new Error("Missing openai_api_key input: required when ai_provider is 'openai'");
+            }
+    }
+}
 async function getReview(opts) {
     try {
+        validateOptions(opts);
         return await (0, retry_1.withRetry)(() => {
             if (opts.aiProvider === 'anthropic') {
                 return (0, anthropic_1.callAnthropic)(opts);
