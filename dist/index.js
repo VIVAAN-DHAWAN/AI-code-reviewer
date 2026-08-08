@@ -35999,17 +35999,20 @@ exports.getReview = getReview;
 const openai_1 = __nccwpck_require__(8238);
 const anthropic_1 = __nccwpck_require__(9222);
 const ollama_1 = __nccwpck_require__(342);
+const retry_1 = __nccwpck_require__(7252);
 var extract_json_1 = __nccwpck_require__(1562);
 Object.defineProperty(exports, "extractJson", ({ enumerable: true, get: function () { return extract_json_1.extractJson; } }));
 async function getReview(opts) {
     try {
-        if (opts.aiProvider === 'anthropic') {
-            return await (0, anthropic_1.callAnthropic)(opts);
-        }
-        if (opts.aiProvider === 'ollama') {
-            return await (0, ollama_1.callOllama)(opts);
-        }
-        return await (0, openai_1.callOpenAI)(opts);
+        return await (0, retry_1.withRetry)(() => {
+            if (opts.aiProvider === 'anthropic') {
+                return (0, anthropic_1.callAnthropic)(opts);
+            }
+            if (opts.aiProvider === 'ollama') {
+                return (0, ollama_1.callOllama)(opts);
+            }
+            return (0, openai_1.callOpenAI)(opts);
+        });
     }
     catch (error) {
         console.error(`AI API Error (${opts.aiProvider}):`, error);
@@ -36084,6 +36087,37 @@ async function callOpenAI(opts) {
         throw new Error('OpenAI returned an empty response');
     }
     return JSON.parse(content);
+}
+
+
+/***/ }),
+
+/***/ 7252:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.withRetry = withRetry;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function withRetry(fn, opts = {}) {
+    const retries = opts.retries ?? 3;
+    const baseDelayMs = opts.baseDelayMs ?? 1000;
+    let lastError;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            return await fn();
+        }
+        catch (error) {
+            lastError = error;
+            if (attempt >= retries)
+                break;
+            const delay = baseDelayMs * 2 ** attempt;
+            console.warn(`Retrying after error (attempt ${attempt + 1}/${retries}): ${error?.message}`);
+            await sleep(delay);
+        }
+    }
+    throw lastError;
 }
 
 
