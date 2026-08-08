@@ -35863,6 +35863,7 @@ async function run() {
         }
         const reviewLevel = core.getInput("review_level") || "full";
         const maxFiles = parseInt(core.getInput("max_files") || "10", 10);
+        const batchSize = Math.max(1, parseInt(core.getInput("batch_size") || "3", 10));
         const context = github.context;
         if (!context.payload.pull_request) {
             core.info("Not a PR event, skipping.");
@@ -35895,9 +35896,8 @@ async function run() {
         const comments = [];
         let summaryBody = "## 🤖 AI Code Review Summary\n\n";
         // ⚡ Bolt: Process files in batches to parallelize external AI API requests without hitting rate limits
-        const BATCH_SIZE = 3;
-        for (let i = 0; i < files.length; i += BATCH_SIZE) {
-            const batch = files.slice(i, i + BATCH_SIZE);
+        for (let i = 0; i < files.length; i += batchSize) {
+            const batch = files.slice(i, i + batchSize);
             const batchResults = await Promise.all(batch.map(async (file) => {
                 if (!file.diff.trim())
                     return null;
