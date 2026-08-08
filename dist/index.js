@@ -35977,6 +35977,9 @@ async function run() {
                     }
                     summaryBody += "\n";
                 }
+                else {
+                    summaryBody += "_No issues found._\n\n";
+                }
             }
         }
         // GitHub caps comments at 65536 chars; truncate defensively.
@@ -35985,6 +35988,10 @@ async function run() {
             summaryBody =
                 summaryBody.substring(0, MAX_SUMMARY_LENGTH) +
                     "\n\n> _Summary truncated: output exceeded the GitHub comment size limit._";
+        }
+        if (files.length === 0) {
+            summaryBody +=
+                "_No reviewable files: the diff was empty, binary-only, or matched by the exclude filters._";
         }
         await (0, github_1.postReviewComments)(token, prNumber, prDetails.head.sha, comments);
         await (0, github_1.postSummary)(token, prNumber, summaryBody);
