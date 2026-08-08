@@ -5,6 +5,18 @@ export interface RetryOptions {
   baseDelayMs?: number;
 }
 
+export const DEFAULT_TIMEOUT_MS = 60_000;
+
+export async function withTimeout<T>(fn: (signal: AbortSignal) => Promise<T>, ms: number = DEFAULT_TIMEOUT_MS): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fn(controller.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function withRetry<T>(
   fn: () => Promise<T>,
   opts: RetryOptions = {},

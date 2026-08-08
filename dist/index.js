@@ -35943,8 +35943,9 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.callAnthropic = callAnthropic;
 const types_1 = __nccwpck_require__(2695);
 const extract_json_1 = __nccwpck_require__(1562);
+const retry_1 = __nccwpck_require__(7252);
 async function callAnthropic(opts) {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await (0, retry_1.withTimeout)((signal) => fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
             'x-api-key': opts.anthropicApiKey || '',
@@ -35957,7 +35958,8 @@ async function callAnthropic(opts) {
             system: types_1.SYSTEM_PROMPT,
             messages: [{ role: 'user', content: (0, types_1.buildUserPrompt)(opts) }],
         }),
-    });
+        signal,
+    }));
     if (!response.ok) {
         throw new Error(`Anthropic Error: ${await response.text()}`);
     }
@@ -36032,8 +36034,9 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.callOllama = callOllama;
 const types_1 = __nccwpck_require__(2695);
 const extract_json_1 = __nccwpck_require__(1562);
+const retry_1 = __nccwpck_require__(7252);
 async function callOllama(opts) {
-    const response = await fetch(`${opts.ollamaHost}/api/chat`, {
+    const response = await (0, retry_1.withTimeout)((signal) => fetch(`${opts.ollamaHost}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -36045,7 +36048,8 @@ async function callOllama(opts) {
                 { role: 'user', content: (0, types_1.buildUserPrompt)(opts) },
             ],
         }),
-    });
+        signal,
+    }));
     if (!response.ok) {
         throw new Error(`Ollama Error: ${await response.text()}`);
     }
@@ -36068,11 +36072,13 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.callOpenAI = callOpenAI;
 const openai_1 = __importDefault(__nccwpck_require__(2583));
 const types_1 = __nccwpck_require__(2695);
+const retry_1 = __nccwpck_require__(7252);
 async function callOpenAI(opts) {
     const isOpenRouter = opts.aiProvider === 'openrouter';
     const client = new openai_1.default({
         apiKey: isOpenRouter ? opts.openrouterApiKey : opts.openaiApiKey,
         baseURL: isOpenRouter ? 'https://openrouter.ai/api/v1' : opts.baseUrl,
+        timeout: retry_1.DEFAULT_TIMEOUT_MS,
     });
     const response = await client.chat.completions.create({
         model: opts.model,
@@ -36098,8 +36104,21 @@ async function callOpenAI(opts) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.DEFAULT_TIMEOUT_MS = void 0;
+exports.withTimeout = withTimeout;
 exports.withRetry = withRetry;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+exports.DEFAULT_TIMEOUT_MS = 60_000;
+async function withTimeout(fn, ms = exports.DEFAULT_TIMEOUT_MS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    try {
+        return await fn(controller.signal);
+    }
+    finally {
+        clearTimeout(timer);
+    }
+}
 async function withRetry(fn, opts = {}) {
     const retries = opts.retries ?? 3;
     const baseDelayMs = opts.baseDelayMs ?? 1000;
