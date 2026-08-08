@@ -2,7 +2,7 @@
   <h1>🤖 AI Code Reviewer</h1>
   <p><strong>An automated, AI-powered code review GitHub Action that works with any OpenAI-compatible API.</strong></p>
   <img src="https://img.shields.io/badge/OpenAI-Compatible-blue" alt="OpenAI Compatible">
-  <img src="https://img.shields.io/github/stars/VIVAAN-DHAWAN/Testing" alt="GitHub Stars">
+  <img src="https://img.shields.io/github/actions/workflow/status/VIVAAN-DHAWAN/AI-code-reviewer/ci.yml" alt="CI">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/GitHub-Action-blue" alt="GitHub Actions">
 </div>
@@ -37,11 +37,15 @@ on:
 jobs:
   review:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
     steps:
       - uses: actions/checkout@v4
       - uses: VIVAAN-DHAWAN/ai-code-reviewer@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          ai_provider: openai
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           model: gpt-4o
           review_level: full
@@ -61,6 +65,9 @@ jobs:
 | `model` | AI Model to use | Varies by provider | No |
 | `review_level` | `light` or `full` | `full` | No |
 | `max_files` | Maximum files to review | `10` | No |
+| `batch_size` | Files reviewed concurrently per batch | `3` | No |
+| `file_include` | Comma-separated globs; only matching files reviewed | all | No |
+| `file_exclude` | Comma-separated globs; matching files skipped | none | No |
 
 ## 🔌 Provider Examples
 
@@ -116,6 +123,13 @@ jobs:
 
 ## 🤝 Contributing
 Contributions, issues and feature requests are welcome! Feel free to open a PR or issue.
+
+## 🛠️ Troubleshooting
+
+- **`Missing openai_api_key input`** — the selected provider needs its key in the `with:` block. See the provider examples above.
+- **No review posted** — the run logs `Not a PR event, skipping.` if the workflow triggers on push, or `PR title contains [skip-review], skipping.` if the title opts out.
+- **Huge PRs** — raise `max_files`, tune `batch_size`, or use `file_include`/`file_exclude` to focus the review.
+- **Ollama connection refused** — the action runs in GitHub's cloud, so `ollama_host` must point to a reachable host (e.g. a local runner or tunneled port).
 
 ## 📄 License
 MIT © [VIVAAN-DHAWAN](https://github.com/VIVAAN-DHAWAN)
