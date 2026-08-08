@@ -35777,9 +35777,16 @@ function parseDiff(diffString) {
                 diffContent = file.substring(diffStartIdx + 1);
             }
         }
+        // Detect binary patches so callers can skip sending them to an AI reviewer.
+        const isBinary = file.indexOf('GIT binary patch') !== -1 ||
+            /^Binary files .* differ$/m.test(file);
+        if (isBinary) {
+            diffContent = '';
+        }
         return {
             filename,
-            diff: diffContent
+            diff: diffContent,
+            binary: isBinary || undefined
         };
     });
 }
