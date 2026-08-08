@@ -10265,9 +10265,9 @@ const format_url = Url.format;
  */
 function parseURL(urlStr) {
 	/*
-	Check whether the URL is absolute or not
-		Scheme: https://tools.ietf.org/html/rfc3986#section-3.1
-	Absolute URL: https://tools.ietf.org/html/rfc3986#section-4.3
+ 	Check whether the URL is absolute or not
+ 		Scheme: https://tools.ietf.org/html/rfc3986#section-3.1
+ 	Absolute URL: https://tools.ietf.org/html/rfc3986#section-4.3
  */
 	if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.exec(urlStr)) {
 		urlStr = new URL(urlStr).toString();
@@ -35755,12 +35755,28 @@ exports.parseDiff = parseDiff;
 function parseDiff(diffString) {
     const files = diffString.split(/^diff --git a\//m).filter(Boolean);
     return files.map(file => {
-        const lines = file.split('\n');
-        const filenameMatch = lines[0].match(/.*? b\/(.*)/);
+        // Avoid split('\n') on potentially large diff strings to reduce memory allocations.
+        let firstNewline = file.indexOf('\n');
+        if (firstNewline === -1)
+            firstNewline = file.length;
+        const firstLine = file.substring(0, firstNewline);
+        const filenameMatch = firstLine.match(/.*? b\/(.*)/);
         const filename = filenameMatch ? filenameMatch[1] : 'unknown';
         // Extract actual diff lines without header
-        const startIdx = lines.findIndex(line => line.startsWith('+++'));
-        const diffContent = startIdx !== -1 ? lines.slice(startIdx + 1).join('\n') : file;
+        let diffContent = file;
+        const plusLineIdx = file.indexOf('\n+++');
+        if (plusLineIdx !== -1) {
+            const diffStartIdx = file.indexOf('\n', plusLineIdx + 1);
+            if (diffStartIdx !== -1) {
+                diffContent = file.substring(diffStartIdx + 1);
+            }
+        }
+        else if (file.startsWith('+++')) {
+            const diffStartIdx = file.indexOf('\n');
+            if (diffStartIdx !== -1) {
+                diffContent = file.substring(diffStartIdx + 1);
+            }
+        }
         return {
             filename,
             diff: diffContent
@@ -41136,7 +41152,7 @@ function inner_stringify(object, prefix, generateArrayPrefix, commaRoundTrip, al
     }
     for (let j = 0; j < obj_keys.length; ++j) {
         const key = obj_keys[j];
-        const value =
+        const value = 
         // @ts-ignore
         typeof key === 'object' && typeof key.value !== 'undefined' ? key.value : obj[key];
         if (skipNulls && value === null) {
@@ -41152,7 +41168,7 @@ function inner_stringify(object, prefix, generateArrayPrefix, commaRoundTrip, al
         sideChannel.set(object, step);
         const valueSideChannel = new WeakMap();
         valueSideChannel.set(sentinel, sideChannel);
-        push_to_array(values, inner_stringify(value, key_prefix, generateArrayPrefix, commaRoundTrip, allowEmptyArrays, strictNullHandling, skipNulls, encodeDotInKeys,
+        push_to_array(values, inner_stringify(value, key_prefix, generateArrayPrefix, commaRoundTrip, allowEmptyArrays, strictNullHandling, skipNulls, encodeDotInKeys, 
         // @ts-ignore
         generateArrayPrefix === 'comma' && encodeValuesOnly && is_array(obj) ? null : encoder, filter, sort, allowDots, serializeDate, format, formatter, encodeValuesOnly, charset, valueSideChannel));
     }
@@ -41257,7 +41273,7 @@ function stringify(object, opts = {}) {
         if (options.skipNulls && obj[key] === null) {
             continue;
         }
-        push_to_array(keys, inner_stringify(obj[key], key,
+        push_to_array(keys, inner_stringify(obj[key], key, 
         // @ts-expect-error
         generateArrayPrefix, commaRoundTrip, options.allowEmptyArrays, options.strictNullHandling, options.skipNulls, options.encodeDotInKeys, options.encode ? options.encoder : null, options.filter, options.sort, options.allowDots, options.serializeDate, options.format, options.formatter, options.encodeValuesOnly, options.charset, sideChannel));
     }
@@ -48012,7 +48028,7 @@ module.exports = /*#__PURE__*/JSON.parse('[[[0,44],"disallowed_STD3_valid"],[[45
 /************************************************************************/
 /******/ 	// The module cache
 /******/ 	var __webpack_module_cache__ = {};
-/******/
+/******/ 	
 /******/ 	// The require function
 /******/ 	function __nccwpck_require__(moduleId) {
 /******/ 		// Check if module is in cache
@@ -48026,7 +48042,7 @@ module.exports = /*#__PURE__*/JSON.parse('[[[0,44],"disallowed_STD3_valid"],[[45
 /******/ 			// no module.loaded needed
 /******/ 			exports: {}
 /******/ 		};
-/******/
+/******/ 	
 /******/ 		// Execute the module function
 /******/ 		var threw = true;
 /******/ 		try {
@@ -48035,23 +48051,23 @@ module.exports = /*#__PURE__*/JSON.parse('[[[0,44],"disallowed_STD3_valid"],[[45
 /******/ 		} finally {
 /******/ 			if(threw) delete __webpack_module_cache__[moduleId];
 /******/ 		}
-/******/
+/******/ 	
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
 /******/ 	}
-/******/
+/******/ 	
 /************************************************************************/
 /******/ 	/* webpack/runtime/compat */
-/******/
+/******/ 	
 /******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";
-/******/
+/******/ 	
 /************************************************************************/
-/******/
+/******/ 	
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
 /******/ 	// This entry module is referenced by other modules so it can't be inlined
 /******/ 	var __webpack_exports__ = __nccwpck_require__(9407);
 /******/ 	module.exports = __webpack_exports__;
-/******/
+/******/ 	
 /******/ })()
 ;
