@@ -35652,6 +35652,30 @@ Object.defineProperty(exports, "extractJson", ({ enumerable: true, get: function
 
 /***/ }),
 
+/***/ 2973:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.DEFAULTS = void 0;
+exports.DEFAULTS = {
+    aiProvider: 'openai',
+    ollamaHost: 'http://localhost:11434',
+    maxFiles: 10,
+    batchSize: 3,
+    reviewLevel: 'full',
+    models: {
+        openai: 'gpt-4o',
+        openrouter: 'gpt-4o',
+        anthropic: 'claude-sonnet-4-20250514',
+        ollama: 'llama3',
+    },
+};
+
+
+/***/ }),
+
 /***/ 6290:
 /***/ ((__unused_webpack_module, exports) => {
 
@@ -35879,28 +35903,25 @@ const github = __importStar(__nccwpck_require__(3228));
 const diff_parser_1 = __nccwpck_require__(6290);
 const ai_1 = __nccwpck_require__(2382);
 const glob_1 = __nccwpck_require__(5601);
+const config_1 = __nccwpck_require__(2973);
 const github_1 = __nccwpck_require__(9248);
 async function run() {
     try {
         const token = core.getInput("github_token", { required: true });
-        const aiProvider = core.getInput("ai_provider") || "openai";
+        const aiProvider = core.getInput("ai_provider") || config_1.DEFAULTS.aiProvider;
         const openaiApiKey = core.getInput("openai_api_key");
         const anthropicApiKey = core.getInput("anthropic_api_key");
         const openrouterApiKey = core.getInput("openrouter_api_key");
         const baseUrl = core.getInput("base_url");
-        const ollamaHost = core.getInput("ollama_host") || "http://localhost:11434";
+        const ollamaHost = core.getInput("ollama_host") || config_1.DEFAULTS.ollamaHost;
         let model = core.getInput("model");
         if (!model) {
-            if (aiProvider === "openai" || aiProvider === "openrouter")
-                model = "gpt-4o";
-            if (aiProvider === "anthropic")
-                model = "claude-sonnet-4-20250514";
-            if (aiProvider === "ollama")
-                model = "llama3";
+            const providerDefaults = config_1.DEFAULTS.models;
+            model = providerDefaults[aiProvider] ?? "";
         }
-        const reviewLevel = core.getInput("review_level") || "full";
-        const maxFiles = parseInt(core.getInput("max_files") || "10", 10);
-        const batchSize = Math.max(1, parseInt(core.getInput("batch_size") || "3", 10));
+        const reviewLevel = core.getInput("review_level") || config_1.DEFAULTS.reviewLevel;
+        const maxFiles = parseInt(core.getInput("max_files") || String(config_1.DEFAULTS.maxFiles), 10);
+        const batchSize = Math.max(1, parseInt(core.getInput("batch_size") || String(config_1.DEFAULTS.batchSize), 10));
         const context = github.context;
         if (!context.payload.pull_request) {
             core.info("Not a PR event, skipping.");
