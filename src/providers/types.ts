@@ -43,6 +43,31 @@ Return structured JSON matching this schema:
   ]
 }`;
 
+// "light" reviews are faster and noisier-less: only critical and warning
+// findings, no style suggestions, and a shorter summary.
+export function buildSystemPrompt(reviewLevel: string): string {
+  if (reviewLevel === 'light') {
+    return `You are an expert code reviewer. Review the following code diff and report ONLY:
+1. Bugs or logic errors
+2. Security vulnerabilities
+
+Ignore style and minor suggestions. Be very concise.
+Return structured JSON matching this schema:
+{
+  "summary": "Overall review summary (1-2 sentences)",
+  "issues": [
+    {
+      "line": 42,
+      "severity": "critical",
+      "message": "SQL injection vulnerability",
+      "suggestion": "Use parameterized queries"
+    }
+  ]
+}`;
+  }
+  return SYSTEM_PROMPT;
+}
+
 export function buildUserPrompt(opts: ReviewOptions): string {
   return `Review level: ${opts.reviewLevel}\n\nDiff:\n${opts.diff}`;
 }
