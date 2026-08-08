@@ -36023,6 +36023,8 @@ async function run() {
         }
         await (0, github_1.postReviewComments)(token, prNumber, prDetails.head.sha, comments);
         await (0, github_1.postSummary)(token, prNumber, summaryBody);
+        // Also surface the summary in the Actions job summary page.
+        await core.summary.addRaw(summaryBody).write();
     }
     catch (error) {
         core.setFailed(`Action failed: ${error.message}`);
