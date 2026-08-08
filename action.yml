@@ -39,6 +39,10 @@ inputs:
     description: 'Max number of files to review'
     required: false
     default: '10'
+  batch_size:
+    description: 'Number of files reviewed concurrently per batch'
+    required: false
+    default: '3'
 runs:
   using: 'node20'
   main: 'dist/index.js'
