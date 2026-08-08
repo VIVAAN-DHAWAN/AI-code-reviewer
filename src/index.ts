@@ -3,6 +3,7 @@ import * as github from "@actions/github";
 import { parseDiff } from "./diff-parser";
 import { getReview } from "./ai";
 import { matchesAny, parseCommaSeparated } from "./glob";
+import { DEFAULTS } from "./config";
 import {
   getPRDetails,
   getPRDiff,
@@ -14,26 +15,27 @@ async function run() {
   try {
     const token = core.getInput("github_token", { required: true });
 
-    const aiProvider = core.getInput("ai_provider") || "openai";
+    const aiProvider = core.getInput("ai_provider") || DEFAULTS.aiProvider;
     const openaiApiKey = core.getInput("openai_api_key");
     const anthropicApiKey = core.getInput("anthropic_api_key");
     const openrouterApiKey = core.getInput("openrouter_api_key");
     const baseUrl = core.getInput("base_url");
-    const ollamaHost = core.getInput("ollama_host") || "http://localhost:11434";
+    const ollamaHost = core.getInput("ollama_host") || DEFAULTS.ollamaHost;
 
     let model = core.getInput("model");
     if (!model) {
-      if (aiProvider === "openai" || aiProvider === "openrouter")
-        model = "gpt-4o";
-      if (aiProvider === "anthropic") model = "claude-sonnet-4-20250514";
-      if (aiProvider === "ollama") model = "llama3";
+      const providerDefaults = DEFAULTS.models as Record<string, string>;
+      model = providerDefaults[aiProvider] ?? "";
     }
 
-    const reviewLevel = core.getInput("review_level") || "full";
-    const maxFiles = parseInt(core.getInput("max_files") || "10", 10);
+    const reviewLevel = core.getInput("review_level") || DEFAULTS.reviewLevel;
+    const maxFiles = parseInt(
+      core.getInput("max_files") || String(DEFAULTS.maxFiles),
+      10,
+    );
     const batchSize = Math.max(
       1,
-      parseInt(core.getInput("batch_size") || "3", 10),
+      parseInt(core.getInput("batch_size") || String(DEFAULTS.batchSize), 10),
     );
 
     const context = github.context;
