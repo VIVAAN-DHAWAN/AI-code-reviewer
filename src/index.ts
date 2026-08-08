@@ -50,7 +50,18 @@ async function run() {
       getPRDetails(token),
       getPRDiff(token, prNumber),
     ]);
-    const files = parseDiff(diff).slice(0, maxFiles);
+
+    // Skip empty and binary files, and deduplicate by filename before
+    // applying max_files so large rename-heavy PRs don't waste budget.
+    const seen = new Set<string>();
+    const files = parseDiff(diff)
+      .filter((f) => {
+        if (f.binary || !f.diff.trim()) return false;
+        if (seen.has(f.filename)) return false;
+        seen.add(f.filename);
+        return true;
+      })
+      .slice(0, maxFiles);
 
     const comments: { path: string; body: string; line: number }[] = [];
     let summaryBody = "## 🤖 AI Code Review Summary\n\n";

@@ -35879,7 +35879,19 @@ async function run() {
             (0, github_1.getPRDetails)(token),
             (0, github_1.getPRDiff)(token, prNumber),
         ]);
-        const files = (0, diff_parser_1.parseDiff)(diff).slice(0, maxFiles);
+        // Skip empty and binary files, and deduplicate by filename before
+        // applying max_files so large rename-heavy PRs don't waste budget.
+        const seen = new Set();
+        const files = (0, diff_parser_1.parseDiff)(diff)
+            .filter((f) => {
+            if (f.binary || !f.diff.trim())
+                return false;
+            if (seen.has(f.filename))
+                return false;
+            seen.add(f.filename);
+            return true;
+        })
+            .slice(0, maxFiles);
         const comments = [];
         let summaryBody = "## 🤖 AI Code Review Summary\n\n";
         // ⚡ Bolt: Process files in batches to parallelize external AI API requests without hitting rate limits
