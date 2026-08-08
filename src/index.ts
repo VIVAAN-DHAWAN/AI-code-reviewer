@@ -45,11 +45,8 @@ async function run() {
       return;
     }
 
-    // ⚡ Bolt: Fetch PR details and diff concurrently to reduce network wait time
-    const [prDetails, diff] = await Promise.all([
-      getPRDetails(token),
-      getPRDiff(token, prNumber),
-    ]);
+    const prDetails = await getPRDetails(token);
+    const diff = await getPRDiff(token, prNumber);
     const files = parseDiff(diff).slice(0, maxFiles);
 
     const comments: { path: string; body: string; line: number }[] = [];
@@ -102,11 +99,8 @@ async function run() {
       }
     }
 
-    // ⚡ Bolt: Post comments and summary concurrently to speed up action completion
-    await Promise.all([
-      postReviewComments(token, prNumber, prDetails.head.sha, comments),
-      postSummary(token, prNumber, summaryBody),
-    ]);
+    await postReviewComments(token, prNumber, prDetails.head.sha, comments);
+    await postSummary(token, prNumber, summaryBody);
   } catch (error: any) {
     core.setFailed(`Action failed: ${error.message}`);
   }
