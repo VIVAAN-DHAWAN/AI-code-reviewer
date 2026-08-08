@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { parseDiff } from "./diff-parser";
 import { getReview } from "./ai";
+import { matchesAny, parseCommaSeparated } from "./glob";
 import {
   getPRDetails,
   getPRDiff,
@@ -57,12 +58,20 @@ async function run() {
 
     // Skip empty and binary files, and deduplicate by filename before
     // applying max_files so large rename-heavy PRs don't waste budget.
+    const includePatterns = parseCommaSeparated(core.getInput("file_include"));
+    const excludePatterns = parseCommaSeparated(core.getInput("file_exclude"));
     const seen = new Set<string>();
     const files = parseDiff(diff)
       .filter((f) => {
         if (f.binary || !f.diff.trim()) return false;
         if (seen.has(f.filename)) return false;
         seen.add(f.filename);
+        if (excludePatterns.length > 0 && matchesAny(f.filename, excludePatterns)) {
+          return false;
+        }
+        if (includePatterns.length > 0 && !matchesAny(f.filename, includePatterns)) {
+          return false;
+        }
         return true;
       })
       .slice(0, maxFiles);
