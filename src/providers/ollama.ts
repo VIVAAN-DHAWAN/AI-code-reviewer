@@ -1,5 +1,5 @@
 import type { ReviewOptions, ReviewResult } from './types';
-import { SYSTEM_PROMPT, buildUserPrompt } from './types';
+import { buildSystemPrompt, buildUserPrompt } from './types';
 import { extractJson } from './extract-json';
 import { withTimeout } from './retry';
 
@@ -13,7 +13,7 @@ export async function callOllama(opts: ReviewOptions): Promise<ReviewResult> {
         stream: false,
         format: 'json',
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: buildSystemPrompt(opts.reviewLevel) },
           { role: 'user', content: buildUserPrompt(opts) },
         ],
       }),

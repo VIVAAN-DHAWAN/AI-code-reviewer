@@ -1,5 +1,5 @@
 import type { ReviewOptions, ReviewResult } from './types';
-import { SYSTEM_PROMPT, buildUserPrompt } from './types';
+import { buildSystemPrompt, buildUserPrompt } from './types';
 import { extractJson } from './extract-json';
 import { withTimeout } from './retry';
 
@@ -15,7 +15,7 @@ export async function callAnthropic(opts: ReviewOptions): Promise<ReviewResult> 
       body: JSON.stringify({
         model: opts.model,
         max_tokens: 4096,
-        system: SYSTEM_PROMPT,
+        system: buildSystemPrompt(opts.reviewLevel),
         messages: [{ role: 'user', content: buildUserPrompt(opts) }],
       }),
       signal,

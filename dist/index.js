@@ -36054,7 +36054,7 @@ async function callAnthropic(opts) {
         body: JSON.stringify({
             model: opts.model,
             max_tokens: 4096,
-            system: types_1.SYSTEM_PROMPT,
+            system: (0, types_1.buildSystemPrompt)(opts.reviewLevel),
             messages: [{ role: 'user', content: (0, types_1.buildUserPrompt)(opts) }],
         }),
         signal,
@@ -36168,7 +36168,7 @@ async function callOllama(opts) {
             stream: false,
             format: 'json',
             messages: [
-                { role: 'system', content: types_1.SYSTEM_PROMPT },
+                { role: 'system', content: (0, types_1.buildSystemPrompt)(opts.reviewLevel) },
                 { role: 'user', content: (0, types_1.buildUserPrompt)(opts) },
             ],
         }),
@@ -36207,7 +36207,7 @@ async function callOpenAI(opts) {
     const response = await client.chat.completions.create({
         model: opts.model,
         messages: [
-            { role: 'system', content: types_1.SYSTEM_PROMPT },
+            { role: 'system', content: (0, types_1.buildSystemPrompt)(opts.reviewLevel) },
             { role: 'user', content: (0, types_1.buildUserPrompt)(opts) },
         ],
         response_format: { type: 'json_object' },
@@ -36273,6 +36273,7 @@ async function withRetry(fn, opts = {}) {
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SYSTEM_PROMPT = void 0;
+exports.buildSystemPrompt = buildSystemPrompt;
 exports.buildUserPrompt = buildUserPrompt;
 exports.SYSTEM_PROMPT = `You are an expert code reviewer. Review the following code diff and identify:
 1. Bugs or logic errors
@@ -36294,6 +36295,30 @@ Return structured JSON matching this schema:
     }
   ]
 }`;
+// "light" reviews are faster and noisier-less: only critical and warning
+// findings, no style suggestions, and a shorter summary.
+function buildSystemPrompt(reviewLevel) {
+    if (reviewLevel === 'light') {
+        return `You are an expert code reviewer. Review the following code diff and report ONLY:
+1. Bugs or logic errors
+2. Security vulnerabilities
+
+Ignore style and minor suggestions. Be very concise.
+Return structured JSON matching this schema:
+{
+  "summary": "Overall review summary (1-2 sentences)",
+  "issues": [
+    {
+      "line": 42,
+      "severity": "critical",
+      "message": "SQL injection vulnerability",
+      "suggestion": "Use parameterized queries"
+    }
+  ]
+}`;
+    }
+    return exports.SYSTEM_PROMPT;
+}
 function buildUserPrompt(opts) {
     return `Review level: ${opts.reviewLevel}\n\nDiff:\n${opts.diff}`;
 }

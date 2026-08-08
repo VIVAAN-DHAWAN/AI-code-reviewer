@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import type { ReviewOptions, ReviewResult } from './types';
-import { SYSTEM_PROMPT, buildUserPrompt } from './types';
+import { buildSystemPrompt, buildUserPrompt } from './types';
 import { DEFAULT_TIMEOUT_MS } from './retry';
 
 export async function callOpenAI(opts: ReviewOptions): Promise<ReviewResult> {
@@ -14,7 +14,7 @@ export async function callOpenAI(opts: ReviewOptions): Promise<ReviewResult> {
   const response = await client.chat.completions.create({
     model: opts.model,
     messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: buildSystemPrompt(opts.reviewLevel) },
       { role: 'user', content: buildUserPrompt(opts) },
     ],
     response_format: { type: 'json_object' },
