@@ -152,6 +152,9 @@ async function run() {
 
     await postReviewComments(token, prNumber, prDetails.head.sha, comments);
     await postSummary(token, prNumber, summaryBody);
+
+    // Also surface the summary in the Actions job summary page.
+    await core.summary.addRaw(summaryBody).write();
   } catch (error: any) {
     core.setFailed(`Action failed: ${error.message}`);
   }
